@@ -1,17 +1,18 @@
-import datetime
 import os
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import discord
-from discord import Client, Intents
-from discord.message import Message
+from beartype import claw
+from discord import Intents
+from discord.ext.commands import Bot, Context
 
 from eadk_discord.database import Database
 
-intents: Intents = discord.Intents.default()
-intents.message_content = True
+claw.beartype_this_package()
 
-client: Client = discord.Client(intents=intents)
+TIME_ZONE = ZoneInfo("Europe/Copenhagen")
 
 bot_token_option: str | None = os.getenv("DISCORD_BOT_TOKEN")
 if bot_token_option is None:
@@ -25,30 +26,58 @@ if database_path_option is None:
 else:
     database_path: Path = Path(database_path_option)
 
-database = Database.load_or_create(database_path, start_date=datetime.date.today(), starting_days=7, num_desks=6)
+database = Database.load_or_create(database_path, start_date=date.today(), starting_days=7, num_desks=6)
 database.save(database_path)
 
 
-@client.event
+intents: Intents = discord.Intents.default()
+intents.message_content = True
+
+
+bot = Bot(command_prefix="/", intents=intents)
+
+
+def get_booking_date() -> tuple[bool, date]:
+    """
+    Returns a tuple of two values:
+    - A boolean indicating whether it is currently before 17:00.
+    - A date object representing the date on which desks should be booked.
+    """
+    now = datetime.now(TIME_ZONE)
+    today = now.hour < 17
+    booking_date = now.date() if now.hour < 17 else now.date() + timedelta(days=1)
+    return today, booking_date
+
+
+@bot.event
 async def on_ready():
-    print(f"We have logged in as {client.user}")
+    print(f"We have logged in as {bot.user}")
 
 
-@client.event
-async def on_message(message: Message):
-    print(type(message))
-    if message.author == client.user:
-        return
-
-    if message.content.startswith("/book"):
-        success = database.day(datetime.date.today()).book(0, message.author.name)
-        if success:
-            await message.channel.send(f"Succesfully booked desk 0 for {message.author.name}")
-            database.save(database_path)
+@bot.command()
+async def book(ctx: Context):
+    try:
+        today, booking_date = get_booking_date()
+        booking_day = database.day(booking_date)
+        if booking_day is None:
+            raise Exception("INTERNAL ERROR: booking day not found, but today and tomorrow should always exist")
+        desk_index = booking_day.available_desk()
+        if desk_index is None:
+            await ctx.send(f"No more desks are available for booking {'today' if today else 'tomorrow'}.")
+            return
         else:
-            await message.channel.send(
-                f"Desk 0 is already booked by {database.day(datetime.date.today()).desk(0).booked_by()}"
-            )
+            desk = booking_day.desk(desk_index)
+            success = desk.book(ctx.author.name)
+            if not success:
+                raise Exception(
+                    f"INTERNAL ERROR: desk {desk_index} was not available, "
+                    "but available_desk() returned it as available"
+                )
+            await ctx.send(f"Desk {desk_index} has been booked for you {'today' if today else 'tomorrow'}.")
+    except Exception:
+        await ctx.send("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+        raise
+    database.save(database_path)
 
 
-client.run(bot_token)
+bot.run(bot_token)

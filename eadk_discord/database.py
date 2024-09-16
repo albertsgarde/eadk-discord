@@ -4,6 +4,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+MAX_FUTURE_DAYS: int = 366
+
 
 class DeskStatus(BaseModel):
     booked: str | None = Field()
@@ -43,13 +45,20 @@ class Day(BaseModel):
         """
         Returns the DeskStatus object for the given desk.
         """
-        return self.desks[desk]
+        if desk <= 0:
+            raise ValueError("desk number must be positive")
+        elif desk > len(self.desks):
+            raise ValueError("desk number is out of range. There are only {len(self.desks)} desks.")
+        return self.desks[desk - 1]
 
-    def book(self, desk: int, user: str) -> bool:
+    def available_desk(self) -> int | None:
         """
-        Returns True if the desk was successfully booked, False if the desk was already booked.
+        Returns the first available desk, or None if all desks are booked.
         """
-        return self.desks[desk].book(user)
+        for i, desk in enumerate(self.desks):
+            if not desk.is_booked():
+                return i + 1
+        return None
 
 
 class Database(BaseModel):
@@ -62,9 +71,12 @@ class Database(BaseModel):
         Loads the database from the given path, or creates a new database if the path does not exist.
         """
         try:
-            return Database.load(path)
+            database = Database.load(path)
+            print(f"Loaded database from {path}.")
         except FileNotFoundError:
-            return Database.create(start_date, starting_days, num_desks)
+            database = Database.create(start_date, starting_days, num_desks)
+            print(f"No database found at {path}, created new database.")
+        return database
 
     @staticmethod
     def load(path: Path) -> "Database":
@@ -94,12 +106,23 @@ class Database(BaseModel):
         with path.open("w") as file:
             file.write(self.model_dump_json())
 
-    def day(self, date: date) -> Day | None:
+    def day(self, date_arg: date) -> Day | None:
         """
         Returns the Day object for the given date, or None if the date is not in the database.
         """
-        days_from_start_date = (date - self.start_date).days
-        if days_from_start_date < 0 or days_from_start_date >= len(self.days):
+        days_from_start_date = (date_arg - self.start_date).days
+        if days_from_start_date < 0:
             return None
+        elif days_from_start_date >= len(self.days):
+            days_from_now = (date_arg - date.today()).days
+            if days_from_now <= MAX_FUTURE_DAYS:
+                cur_max_from_now = (self.days[-1].date - date.today()).days
+                self.days.extend(
+                    [
+                        Day.create_unbooked(date.today() + timedelta(i), len(self.days[-1].desks))
+                        for i in range(cur_max_from_now + 1, days_from_now + 1)
+                    ]
+                )
+                return self.days[days_from_start_date]
         else:
             return self.days[days_from_start_date]

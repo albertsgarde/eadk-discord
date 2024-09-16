@@ -1,9 +1,11 @@
 # A Discord bot for the EADK Discord server
 
 # Capabilities
- - [ ] Book a desk for a day in the office.
+ - [x] Book a desk for a day in the office.
+    - [ ] Optionally allow specifying a specific date.
+      - [ ] Specify a range of dates.
+    - [ ] Optionally allow specifying a specific desk.
     - [ ] Optionally allow specifying someone else.
-    - [ ] Optionally allow specifying a specific date or range.
  - [ ] Specify permanent desk holders.
  - [ ] Unbook previously booked flex desks.
  - [ ] Make a permanent desk available for a period of time.

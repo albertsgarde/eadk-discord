@@ -45,20 +45,26 @@ class Day(BaseModel):
         """
         Returns the DeskStatus object for the given desk.
         """
-        if desk <= 0:
-            raise ValueError("desk number must be positive")
-        elif desk > len(self.desks):
+        if desk < 0:
+            raise ValueError("desk number must be non-negative")
+        elif desk >= len(self.desks):
             raise ValueError("desk number is out of range. There are only {len(self.desks)} desks.")
-        return self.desks[desk - 1]
+        return self.desks[desk]
 
-    def available_desk(self) -> int | None:
+    def get_available_desk(self) -> int | None:
         """
         Returns the first available desk, or None if all desks are booked.
         """
         for i, desk in enumerate(self.desks):
             if not desk.is_booked():
-                return i + 1
+                return i
         return None
+
+    def available_desks(self) -> list[int]:
+        """
+        Returns a list of indices of available desks.
+        """
+        return [i for i, desk in enumerate(self.desks) if not desk.is_booked()]
 
 
 class Database(BaseModel):

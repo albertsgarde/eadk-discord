@@ -55,17 +55,38 @@ async def on_ready():
 
 
 @bot.command()
+async def info(ctx: Context):
+    try:
+        today, booking_date = get_booking_date()
+        booking_day = database.day(booking_date)
+        if booking_day is None:
+            raise Exception("INTERNAL ERROR: booking day not found, but today and tomorrow should always exist")
+        available_desks = booking_day.available_desks()
+        available_desks_str = (
+            f"Available desks {'today' if today else 'tomorrow'}: "
+            f"{', '.join(str(desk + 1) for desk in available_desks)}"
+            if available_desks
+            else f"No desks are available {'today' if today else 'tomorrow'}."
+        )
+        await ctx.send(f"{available_desks_str}")
+    except Exception:
+        await ctx.send("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+        raise
+
+
+@bot.command()
 async def book(ctx: Context):
     try:
         today, booking_date = get_booking_date()
         booking_day = database.day(booking_date)
         if booking_day is None:
             raise Exception("INTERNAL ERROR: booking day not found, but today and tomorrow should always exist")
-        desk_index = booking_day.available_desk()
+        desk_index = booking_day.get_available_desk()
         if desk_index is None:
             await ctx.send(f"No more desks are available for booking {'today' if today else 'tomorrow'}.")
             return
         else:
+            desk_num = desk_index + 1
             desk = booking_day.desk(desk_index)
             success = desk.book(ctx.author.name)
             if not success:
@@ -73,7 +94,7 @@ async def book(ctx: Context):
                     f"INTERNAL ERROR: desk {desk_index} was not available, "
                     "but available_desk() returned it as available"
                 )
-            await ctx.send(f"Desk {desk_index} has been booked for you {'today' if today else 'tomorrow'}.")
+            await ctx.send(f"Desk {desk_num} has been booked for you {'today' if today else 'tomorrow'}.")
     except Exception:
         await ctx.send("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
         raise

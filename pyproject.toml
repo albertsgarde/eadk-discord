@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "eadk-discord"
+name = "eadk_discord"
 version = "0.0.1"
 description = "A Discord bot the EADK discord server"
 authors = [{ name = "albertsgarde", email = "albertsgarde@gmail.com" }]
@@ -13,7 +13,7 @@ requires-python = ">=3.11"
 dynamic = ["dependencies", "optional-dependencies"]
 
 [tool.setuptools]
-packages = ["eadk-discord"]
+packages = ["eadk_discord"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
@@ -22,7 +22,7 @@ dependencies = { file = ["requirements.txt"] }
 dev = { file = ['requirements_dev.txt'] }
 
 [tool.pytest.ini_options]
-pythonpath = ["eadk-discord"]
+pythonpath = ["eadk_discord"]
 
 
 [tool.ruff]
@@ -31,4 +31,4 @@ line-length = 120
 [tool.ruff.lint]
 select = ["I", "E", "F", "W", "N", "B"]
 ignore = ["D203", "D213", "F722"]
-isort.known-first-party = []
+isort.known-first-party = ["eadk_discord"]

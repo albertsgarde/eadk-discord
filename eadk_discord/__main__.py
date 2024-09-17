@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import discord
 from beartype import claw
 from discord import Intents
+from discord.ext import commands
 from discord.ext.commands import Bot, Context
 
 from eadk_discord.database import Database
@@ -34,7 +35,7 @@ intents: Intents = discord.Intents.default()
 intents.message_content = True
 
 
-bot = Bot(command_prefix="/", intents=intents)
+bot = Bot(command_prefix="!", intents=intents)
 
 
 def get_booking_date() -> tuple[bool, date]:
@@ -49,13 +50,10 @@ def get_booking_date() -> tuple[bool, date]:
     return today, booking_date
 
 
-@bot.event
-async def on_ready():
-    print(f"We have logged in as {bot.user}")
-
-
-@bot.command()
-async def info(ctx: Context):
+@bot.tree.command(name="info", description="Get available desks for today or tomorrow.")
+async def info(
+    interaction: discord.Interaction,
+) -> None:
     try:
         today, booking_date = get_booking_date()
         booking_day = database.day(booking_date)
@@ -68,14 +66,16 @@ async def info(ctx: Context):
             if available_desks
             else f"No desks are available {'today' if today else 'tomorrow'}."
         )
-        await ctx.send(f"{available_desks_str}")
+        await interaction.response.send_message(f"{available_desks_str}")
     except Exception:
-        await ctx.send("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+        await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
         raise
 
 
-@bot.command()
-async def book(ctx: Context):
+@bot.tree.command(name="book", description="Book a desk for today or tomorrow.")
+async def book(
+    interaction: discord.Interaction,
+) -> None:
     try:
         today, booking_date = get_booking_date()
         booking_day = database.day(booking_date)
@@ -83,22 +83,43 @@ async def book(ctx: Context):
             raise Exception("INTERNAL ERROR: booking day not found, but today and tomorrow should always exist")
         desk_index = booking_day.get_available_desk()
         if desk_index is None:
-            await ctx.send(f"No more desks are available for booking {'today' if today else 'tomorrow'}.")
+            await interaction.response.send_message(
+                f"No more desks are available for booking {'today' if today else 'tomorrow'}."
+            )
             return
         else:
             desk_num = desk_index + 1
             desk = booking_day.desk(desk_index)
-            success = desk.book(ctx.author.name)
+            success = desk.book("author")
             if not success:
                 raise Exception(
                     f"INTERNAL ERROR: desk {desk_index} was not available, "
                     "but available_desk() returned it as available"
                 )
-            await ctx.send(f"Desk {desk_num} has been booked for you {'today' if today else 'tomorrow'}.")
+            await interaction.response.send_message(
+                f"Desk {desk_num} has been booked for you {'today' if today else 'tomorrow'}."
+            )
     except Exception:
-        await ctx.send("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+        await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
         raise
     database.save(database_path)
+
+
+@bot.command()
+@commands.is_owner()
+async def sync(ctx: Context) -> None:
+    """Sync commands"""
+    guild = discord.Object(id=1285163168930336769)
+    ctx.bot.tree.copy_global_to(guild=guild)
+    ctx.bot.tree.clear_commands(guild=None)
+    await ctx.bot.tree.sync(guild=None)
+    synced_commands = await ctx.bot.tree.sync(guild=guild)
+    print(f"Synced {synced_commands} commands to guild {guild}")
+
+
+@bot.event
+async def on_ready():
+    print(f"We have logged in as {bot.user}")
 
 
 bot.run(bot_token)

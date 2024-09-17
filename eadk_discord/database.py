@@ -76,7 +76,7 @@ class Day(BaseModel):
         """
         return [i for i, desk in enumerate(self.desks) if not desk.is_booked()]
 
-    def booked_desks(self, member: str) -> [int]:
+    def booked_desks(self, member: str) -> list[int]:
         """
         Returns the index of the desk booked by the given member, or None if the member has not booked a desk.
         """
@@ -146,5 +146,7 @@ class Database(BaseModel):
                     ]
                 )
                 return self.days[days_from_start_date]
+            else:
+                return None
         else:
             return self.days[days_from_start_date]

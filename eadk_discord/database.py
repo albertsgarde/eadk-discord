@@ -32,6 +32,16 @@ class DeskStatus(BaseModel):
             self.booked = user
             return True
 
+    def unbook(self) -> bool:
+        """
+        Returns True if the desk was successfully unbooked, False if the desk was not booked.
+        """
+        if self.is_booked():
+            self.booked = None
+            return True
+        else:
+            return False
+
 
 class Day(BaseModel):
     date: datetime.date = Field()
@@ -65,6 +75,12 @@ class Day(BaseModel):
         Returns a list of indices of available desks.
         """
         return [i for i, desk in enumerate(self.desks) if not desk.is_booked()]
+
+    def booked_desks(self, member: str) -> [int]:
+        """
+        Returns the index of the desk booked by the given member, or None if the member has not booked a desk.
+        """
+        return [i for i, desk in enumerate(self.desks) if desk.booked_by() == member]
 
 
 class Database(BaseModel):

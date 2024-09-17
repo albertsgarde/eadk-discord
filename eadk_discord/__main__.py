@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 import discord
 from beartype import claw
-from discord import Intents
+from discord import Intents, Interaction
 from discord.ext import commands
 from discord.ext.commands import Bot, Context
 
@@ -50,9 +50,13 @@ def get_booking_date() -> tuple[bool, date]:
     return today, booking_date
 
 
+def author_name(interaction: Interaction) -> str:
+    return interaction.user.display_name
+
+
 @bot.tree.command(name="info", description="Get available desks for today or tomorrow.")
 async def info(
-    interaction: discord.Interaction,
+    interaction: Interaction,
 ) -> None:
     try:
         today, booking_date = get_booking_date()
@@ -66,7 +70,20 @@ async def info(
             if available_desks
             else f"No desks are available {'today' if today else 'tomorrow'}."
         )
-        await interaction.response.send_message(f"{available_desks_str}")
+
+        member = author_name(interaction)
+        booked_desks = booking_day.booked_desks(member)
+        if len(booked_desks) == 1:
+            booked_desk = booked_desks[0]
+            booked_desk_num = booked_desk + 1
+            booked_desks_str = f"\nDesk {booked_desk_num} is booked for you {'today' if today else 'tomorrow'}."
+        elif len(booked_desks) > 1:
+            desk_nums_str = ", ".join(str(desk + 1) for desk in booked_desks)
+            booked_desks_str = f"\nDesks {desk_nums_str} are booked for you {'today' if today else 'tomorrow'}."
+        else:
+            booked_desks_str = ""
+
+        await interaction.response.send_message(f"{available_desks_str}{booked_desks_str}")
     except Exception:
         await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
         raise
@@ -74,7 +91,7 @@ async def info(
 
 @bot.tree.command(name="book", description="Book a desk for today or tomorrow.")
 async def book(
-    interaction: discord.Interaction,
+    interaction: Interaction,
 ) -> None:
     try:
         today, booking_date = get_booking_date()
@@ -90,7 +107,7 @@ async def book(
         else:
             desk_num = desk_index + 1
             desk = booking_day.desk(desk_index)
-            success = desk.book("author")
+            success = desk.book(author_name(interaction))
             if not success:
                 raise Exception(
                     f"INTERNAL ERROR: desk {desk_index} was not available, "
@@ -98,6 +115,34 @@ async def book(
                 )
             await interaction.response.send_message(
                 f"Desk {desk_num} has been booked for you {'today' if today else 'tomorrow'}."
+            )
+    except Exception:
+        await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+        raise
+    database.save(database_path)
+
+
+@bot.tree.command(name="unbook", description="Unbook a desk for today or tomorrow.")
+async def unbook(
+    interaction: Interaction,
+) -> None:
+    try:
+        today, booking_date = get_booking_date()
+        booking_day = database.day(booking_date)
+        if booking_day is None:
+            raise Exception("INTERNAL ERROR: booking day not found, but today and tomorrow should always exist")
+        author = author_name(interaction)
+        desk_indices = booking_day.booked_desks(author)
+        if desk_indices:
+            desk_index = desk_indices[0]
+            desk_num = desk_index + 1
+            booking_day.desk(desk_index).unbook()
+            await interaction.response.send_message(
+                f"Desk {desk_num} is no longer booked for you {'today' if today else 'tomorrow'}."
+            )
+        else:
+            await interaction.response.send_message(
+                f"You already have no desks booked for {'today' if today else 'tomorrow'}."
             )
     except Exception:
         await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")

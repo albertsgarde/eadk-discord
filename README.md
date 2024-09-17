@@ -7,8 +7,9 @@
     - [ ] Optionally allow specifying a specific desk.
     - [ ] Optionally allow specifying someone else.
  - [ ] Specify permanent desk holders.
- - [ ] Unbook previously booked flex desks.
+ - [x] Unbook previously booked flex desks.
  - [ ] Make a permanent desk available for a period of time.
  - [x] Info command to get information about available desks.
     - [x] Default to getting information for today, or tomorrow after 17.
  - [ ] Additional interface through Google Home (voice or tapping interface).
+ - [ ] Sync to Google Sheets or similar.

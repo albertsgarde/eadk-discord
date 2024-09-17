@@ -15,6 +15,47 @@ from eadk_discord.date_converter import DateConverter
 TIME_ZONE = ZoneInfo("Europe/Copenhagen")
 
 
+def format_date(date: date) -> str:
+    return date.isoformat()
+
+
+def get_booking_date(booking_date_arg: date | str | None) -> date | str:
+    """
+    Returns a tuple of two values:
+    - A boolean indicating whether it is currently before 17:00.
+    - A date object representing the date on which desks should be booked.
+    """
+    if booking_date_arg is not None:
+        return booking_date_arg
+    now = datetime.now(TIME_ZONE)
+    booking_date = now.date() if now.hour < 17 else now.date() + timedelta(days=1)
+    return booking_date
+
+
+async def handle_date(
+    database: Database, interaction: Interaction, booking_date_arg: date | str | None
+) -> tuple[date, Day] | None:
+    booking_date = get_booking_date(booking_date_arg)
+    if isinstance(booking_date, str):
+        await interaction.response.send_message(booking_date)
+        return None
+    if booking_date < database.start_date:
+        await interaction.response.send_message(
+            f"Date {format_date(booking_date)} is not in the database. "
+            f"The database starts at {format_date(database.start_date)}."
+        )
+        return None
+    booking_day = database.day(booking_date)
+    if booking_day is None:
+        await interaction.response.send_message(f"Date {format_date(booking_date)} is too far in the future.")
+        return None
+    return booking_date, booking_day
+
+
+def author_name(interaction: Interaction) -> str:
+    return interaction.user.display_name
+
+
 def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     database = Database.load_or_create(database_path, start_date=date.today(), starting_days=7, num_desks=6)
     database.save(database_path)
@@ -24,45 +65,10 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
     bot = Bot(command_prefix="!", intents=intents)
 
-    def format_date(date: date) -> str:
-        return date.isoformat()
-
-    def get_booking_date(booking_date_arg: date | str | None) -> date | str:
-        """
-        Returns a tuple of two values:
-        - A boolean indicating whether it is currently before 17:00.
-        - A date object representing the date on which desks should be booked.
-        """
-        if booking_date_arg is not None:
-            return booking_date_arg
-        now = datetime.now(TIME_ZONE)
-        booking_date = now.date() if now.hour < 17 else now.date() + timedelta(days=1)
-        return booking_date
-
-    async def handle_date(interaction: Interaction, booking_date_arg: date | str | None) -> tuple[date, Day] | None:
-        booking_date = get_booking_date(booking_date_arg)
-        if isinstance(booking_date, str):
-            await interaction.response.send_message(booking_date)
-            return None
-        if booking_date < database.start_date:
-            await interaction.response.send_message(
-                f"Date {format_date(booking_date)} is not in the database. "
-                f"The database starts at {format_date(database.start_date)}."
-            )
-            return None
-        booking_day = database.day(booking_date)
-        if booking_day is None:
-            await interaction.response.send_message(f"Date {format_date(booking_date)} is too far in the future.")
-            return None
-        return booking_date, booking_day
-
-    def author_name(interaction: Interaction) -> str:
-        return interaction.user.display_name
-
     @bot.tree.command(name="info", description="Get available desks for today or tomorrow.", guilds=guilds)
     async def info(interaction: Interaction, booking_date_arg: Transform[date | str, DateConverter] | None) -> None:
         try:
-            handle_date_result = await handle_date(interaction, booking_date_arg)
+            handle_date_result = await handle_date(database, interaction, booking_date_arg)
             if handle_date_result is None:
                 return
             booking_date, booking_day = handle_date_result
@@ -98,7 +104,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         booking_date_arg: Transform[date | str, DateConverter] | None,
     ) -> None:
         try:
-            handle_date_result = await handle_date(interaction, booking_date_arg)
+            handle_date_result = await handle_date(database, interaction, booking_date_arg)
             if handle_date_result is None:
                 return
             booking_date, booking_day = handle_date_result
@@ -136,7 +142,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         booking_date_arg: Transform[date | str, DateConverter] | None,
     ) -> None:
         try:
-            handle_date_result = await handle_date(interaction, booking_date_arg)
+            handle_date_result = await handle_date(database, interaction, booking_date_arg)
             if handle_date_result is None:
                 return
             booking_date, booking_day = handle_date_result

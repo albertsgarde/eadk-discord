@@ -1,6 +1,6 @@
-import datetime
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date as Date  # noqa: N812
+from datetime import timedelta as TimeDelta  # noqa: N812
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -58,17 +58,17 @@ class DeskStatus(BaseModel):
 
 
 class Day(BaseModel):
-    date: datetime.date = Field()
+    date: Date = Field()
     desks: list[DeskStatus] = Field()
 
     @classmethod
-    def create_unbooked(cls, date: datetime.date, num_desks: int) -> "Day":
+    def create_unbooked(cls, date: Date, num_desks: int) -> "Day":
         return cls(date=date, desks=[DeskStatus(booker=None, owner=None) for _ in range(num_desks)])
 
     @classmethod
     def create_from_previous(cls, previous: "Day") -> "Day":
         return cls(
-            date=previous.date + timedelta(1),
+            date=previous.date + TimeDelta(1),
             desks=[DeskStatus(booker=desk.owner, owner=desk.owner) for desk in previous.desks],
         )
 
@@ -108,15 +108,15 @@ class Day(BaseModel):
 class DeskAlreadyOwnedError(Exception):
     owner: str
     desk: int
-    day: date
+    day: Date
 
 
 class Database(BaseModel):
-    start_date: date = Field()
+    start_date: Date = Field()
     days: list[Day] = Field()
 
     @staticmethod
-    def load_or_create(path: Path, start_date: date, starting_days: int, num_desks: int) -> "Database":
+    def load_or_create(path: Path, start_date: Date, starting_days: int, num_desks: int) -> "Database":
         """
         Loads the database from the given path, or creates a new database if the path does not exist.
         """
@@ -138,7 +138,7 @@ class Database(BaseModel):
             return Database.model_validate_json(file.read())
 
     @staticmethod
-    def create(start_date: date, starting_days: int, num_desks: int) -> "Database":
+    def create(start_date: Date, starting_days: int, num_desks: int) -> "Database":
         """
         Creates a new database with the given start date, number of days, and number of desks.
         Will be initialized with `starting_days` days, each with `num_desks` unbooked desks.
@@ -158,11 +158,11 @@ class Database(BaseModel):
         with path.open("w") as file:
             file.write(self.model_dump_json())
 
-    def day(self, date_arg: date) -> Day | None:
+    def day(self, date: Date) -> Day | None:
         """
         Returns the Day object for the given date, or None if the date is not in the database.
         """
-        days_from_start_date = (date_arg - self.start_date).days
+        days_from_start_date = (date - self.start_date).days
         today_max_date_index = days_from_start_date + MAX_FUTURE_DAYS
         if days_from_start_date < 0:
             return None
@@ -172,21 +172,21 @@ class Database(BaseModel):
             return None
         return self.days[days_from_start_date]
 
-    def make_owned(self, date_arg: date, desk: int, user: str) -> None:
-        day_index = (date_arg - self.start_date).days
-        day = self.day(date_arg)
+    def make_owned(self, date: Date, desk: int, user: str) -> None:
+        day_index = (date - self.start_date).days
+        day = self.day(date)
         if day is None:
             return None
         desk_owner = day.desk(desk).owner
         if desk_owner:
-            raise DeskAlreadyOwnedError(owner=desk_owner, desk=desk, day=date_arg)
+            raise DeskAlreadyOwnedError(owner=desk_owner, desk=desk, day=date)
         days = self.days[day_index:]
         for day in days:
             day.desk(desk).make_owned(desk, user)
 
-    def make_flex(self, date_arg: date, desk: int) -> None:
-        day_index = (date_arg - self.start_date).days
-        if self.day(date_arg) is None:
+    def make_flex(self, date: Date, desk: int) -> None:
+        day_index = (date - self.start_date).days
+        if self.day(date) is None:
             return None
         days = self.days[day_index:]
         for day in days:

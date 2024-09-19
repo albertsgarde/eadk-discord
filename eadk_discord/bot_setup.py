@@ -9,7 +9,7 @@ from discord.app_commands import Transform
 from discord.ext import commands
 from discord.ext.commands import Bot, Context
 
-from eadk_discord.database import Database, Day
+from eadk_discord.database import Database, Day, DeskAlreadyOwnedError
 from eadk_discord.date_converter import DateConverter
 
 TIME_ZONE = ZoneInfo("Europe/Copenhagen")
@@ -163,6 +163,75 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 await interaction.response.send_message(f"Desk {desk_num} is no longer booked for you {date_str}.")
             else:
                 await interaction.response.send_message(f"You already have no desks booked for {date_str}.")
+        except Exception:
+            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+            raise
+        database.save(database_path)
+
+    @bot.tree.command(
+        name="makeowned", description="Make a user the owner of the desk from a specific date", guilds=guilds
+    )
+    async def makeowned(interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: int) -> None:
+        try:
+            handle_date_result = await handle_date(database, interaction, start_date)
+            if handle_date_result is None:
+                return
+            booking_date, booking_day = handle_date_result
+            date_str = format_date(booking_date)
+
+            if booking_date < date.today():
+                await interaction.response.send_message(
+                    f"Date {date_str} not available for booking. You cannot make a desk permanent retroactively."
+                )
+                return
+
+            if desk < 1 or desk > len(booking_day.desks):
+                await interaction.response.send_message(
+                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks."
+                )
+                return
+
+            desk_index = desk - 1
+
+            author = author_name(interaction)
+            try:
+                database.make_owned(booking_date, desk_index, author)
+                await interaction.response.send_message(
+                    f"Desk {desk} is now owned by {author} from {date_str} onwards."
+                )
+            except DeskAlreadyOwnedError as e:
+                await interaction.response.send_message(f"Desk {e.desk + 1} is already owned by {e.owner} on {e.day}.")
+                return
+        except Exception:
+            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+            raise
+        database.save(database_path)
+
+    @bot.tree.command(name="makeflex", description="Make a desk a flex desk from a specific date", guilds=guilds)
+    async def makeflex(interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: int) -> None:
+        try:
+            handle_date_result = await handle_date(database, interaction, start_date)
+            if handle_date_result is None:
+                return
+            booking_date, booking_day = handle_date_result
+            date_str = format_date(booking_date)
+
+            if booking_date < date.today():
+                await interaction.response.send_message(
+                    f"Date {date_str} not available for booking. You cannot make a desk permanent retroactively."
+                )
+                return
+
+            if desk < 1 or desk > len(booking_day.desks):
+                await interaction.response.send_message(
+                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks."
+                )
+                return
+
+            desk_index = desk - 1
+
+            database.make_flex(booking_date, desk_index)
+            await interaction.response.send_message(f"Desk {desk} is now a flex desk from {date_str} onwards.")
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
             raise

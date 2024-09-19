@@ -1,4 +1,5 @@
 import datetime
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -8,36 +9,49 @@ MAX_FUTURE_DAYS: int = 366
 
 
 class DeskStatus(BaseModel):
-    booked: str | None = Field()
-
-    def is_booked(self) -> bool:
-        """
-        Returns True if the desk is booked, False if the desk is not booked.
-        """
-        return self.booked is not None
-
-    def booked_by(self) -> str | None:
-        """
-        Returns the user who booked the desk, or None if the desk is not booked.
-        """
-        return self.booked
+    booker: str | None = Field()
+    owner: str | None = Field()
 
     def book(self, user: str) -> bool:
         """
         Returns True if the desk was successfully booked, False if the desk was already booked.
         """
-        if self.is_booked():
+        if self.booker:
             return False
         else:
-            self.booked = user
+            self.booker = user
             return True
 
     def unbook(self) -> bool:
         """
         Returns True if the desk was successfully unbooked, False if the desk was not booked.
         """
-        if self.is_booked():
-            self.booked = None
+        if self.booker:
+            self.booker = None
+            return True
+        else:
+            return False
+
+    def make_owned(self, desk: int, user: str) -> bool:
+        """
+        Returns True if the desk was successfully permanently booked, False if the desk was already permanently booked.
+        """
+        if self.owner:
+            return False
+        else:
+            if self.booker is None:
+                self.booker = user
+            self.owner = user
+            return True
+
+    def make_flex(self, desk: int) -> bool:
+        """
+        Returns True if the desk was successfully unpermanently booked, False if the desk was not permanently booked.
+        """
+        if self.owner:
+            if self.owner == self.booker:
+                self.booker = None
+            self.owner = None
             return True
         else:
             return False
@@ -49,7 +63,14 @@ class Day(BaseModel):
 
     @classmethod
     def create_unbooked(cls, date: datetime.date, num_desks: int) -> "Day":
-        return cls(date=date, desks=[DeskStatus(booked=None) for _ in range(num_desks)])
+        return cls(date=date, desks=[DeskStatus(booker=None, owner=None) for _ in range(num_desks)])
+
+    @classmethod
+    def create_from_previous(cls, previous: "Day") -> "Day":
+        return cls(
+            date=previous.date + timedelta(1),
+            desks=[DeskStatus(booker=desk.owner, owner=desk.owner) for desk in previous.desks],
+        )
 
     def desk(self, desk: int) -> DeskStatus:
         """
@@ -66,7 +87,7 @@ class Day(BaseModel):
         Returns the first available desk, or None if all desks are booked.
         """
         for i, desk in enumerate(self.desks):
-            if not desk.is_booked():
+            if desk.booker is None:
                 return i
         return None
 
@@ -74,13 +95,20 @@ class Day(BaseModel):
         """
         Returns a list of indices of available desks.
         """
-        return [i for i, desk in enumerate(self.desks) if not desk.is_booked()]
+        return [i for i, desk in enumerate(self.desks) if desk.booker is None]
 
     def booked_desks(self, member: str) -> list[int]:
         """
         Returns the index of the desk booked by the given member, or None if the member has not booked a desk.
         """
-        return [i for i, desk in enumerate(self.desks) if desk.booked_by() == member]
+        return [i for i, desk in enumerate(self.desks) if desk.booker == member]
+
+
+@dataclass
+class DeskAlreadyOwnedError(Exception):
+    owner: str
+    desk: int
+    day: date
 
 
 class Database(BaseModel):
@@ -117,8 +145,10 @@ class Database(BaseModel):
         """
         if starting_days <= 0:
             raise ValueError("the database must start with at least one day")
-        start_date = start_date
-        days = [Day.create_unbooked(start_date + timedelta(i), num_desks) for i in range(starting_days)]
+        first_day = Day.create_unbooked(start_date, num_desks)
+        days = [first_day]
+        while len(days) < starting_days:
+            days.append(Day.create_from_previous(days[-1]))
         return Database(start_date=start_date, days=days)
 
     def save(self, path: Path):
@@ -133,20 +163,34 @@ class Database(BaseModel):
         Returns the Day object for the given date, or None if the date is not in the database.
         """
         days_from_start_date = (date_arg - self.start_date).days
+        today_max_date_index = days_from_start_date + MAX_FUTURE_DAYS
         if days_from_start_date < 0:
             return None
-        elif days_from_start_date >= len(self.days):
-            days_from_now = (date_arg - date.today()).days
-            if days_from_now <= MAX_FUTURE_DAYS:
-                cur_max_from_now = (self.days[-1].date - date.today()).days
-                self.days.extend(
-                    [
-                        Day.create_unbooked(date.today() + timedelta(i), len(self.days[-1].desks))
-                        for i in range(cur_max_from_now + 1, days_from_now + 1)
-                    ]
-                )
-                return self.days[days_from_start_date]
-            else:
-                return None
-        else:
-            return self.days[days_from_start_date]
+        while len(self.days) <= min(days_from_start_date, today_max_date_index):
+            self.days.append(Day.create_from_previous(self.days[-1]))
+        if len(self.days) <= days_from_start_date:
+            return None
+        return self.days[days_from_start_date]
+
+    def make_owned(self, date_arg: date, desk: int, user: str) -> None:
+        day_index = (date_arg - self.start_date).days
+        day = self.day(date_arg)
+        if day is None:
+            return None
+        desk_owner = day.desk(desk).owner
+        if desk_owner:
+            raise DeskAlreadyOwnedError(owner=desk_owner, desk=desk, day=date_arg)
+        days = self.days[day_index:]
+        for day in days:
+            day.desk(desk).make_owned(desk, user)
+
+    def make_flex(self, date_arg: date, desk: int) -> None:
+        day_index = (date_arg - self.start_date).days
+        if self.day(date_arg) is None:
+            return None
+        days = self.days[day_index:]
+        for day in days:
+            try:
+                day.desk(desk).make_flex(desk)
+            except ValueError:
+                break

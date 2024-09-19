@@ -3,7 +3,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import discord
-from discord import Intents, Interaction, app_commands
+from discord import Intents, Interaction, Member, app_commands
 from discord.abc import Snowflake
 from discord.app_commands import Choice, Range, Transform
 from discord.ext import commands
@@ -73,7 +73,11 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @bot.tree.command(name="info", description="Get available desks for today or tomorrow.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
     @app_commands.rename(booking_date_arg="date")
-    async def info(interaction: Interaction, booking_date_arg: Transform[date | str, DateConverter] | None) -> None:
+    async def info(
+        interaction: Interaction,
+        booking_date_arg: Transform[date | str, DateConverter] | None,
+        user: Member | None,
+    ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, booking_date_arg)
             if handle_date_result is None:
@@ -88,15 +92,18 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 else f"No desks are available {date_str}."
             )
 
-            member = author_name(interaction)
-            booked_desks = booking_day.booked_desks(member)
+            if user:
+                user_name = user.display_name
+            else:
+                user_name = author_name(interaction)
+            booked_desks = booking_day.booked_desks(user_name)
             if len(booked_desks) == 1:
                 booked_desk = booked_desks[0]
                 booked_desk_num = booked_desk + 1
-                booked_desks_str = f"\nDesk {booked_desk_num} is booked for you."
+                booked_desks_str = f"\nDesk {booked_desk_num} is booked for {user_name}."
             elif len(booked_desks) > 1:
                 desk_nums_str = ", ".join(str(desk + 1) for desk in booked_desks)
-                booked_desks_str = f"\nDesks {desk_nums_str} are booked for you."
+                booked_desks_str = f"\nDesks {desk_nums_str} are booked for {user_name}."
             else:
                 booked_desks_str = ""
 
@@ -111,6 +118,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     async def book(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
+        user: Member | None,
     ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, booking_date_arg)
@@ -121,11 +129,14 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
             if booking_date < date.today():
                 await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. You cannot book a desk in the past."
+                    f"Date {date_str} not available for booking. Desks cannot be booked in the past."
                 )
                 return
 
-            author = author_name(interaction)
+            if user:
+                user_name = user.display_name
+            else:
+                user_name = author_name(interaction)
             desk_index = booking_day.get_available_desk()
             if desk_index is None:
                 await interaction.response.send_message(f"No more desks are available for booking {date_str}.")
@@ -133,13 +144,13 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             else:
                 desk_num = desk_index + 1
                 desk = booking_day.desk(desk_index)
-                success = desk.book(author)
+                success = desk.book(user_name)
                 if not success:
                     raise Exception(
                         f"INTERNAL ERROR: desk {desk_index} was not available, "
                         "but available_desk() returned it as available"
                     )
-                await interaction.response.send_message(f"Desk {desk_num} has been booked for you {date_str}.")
+                await interaction.response.send_message(f"Desk {desk_num} has been booked for {user_name} {date_str}.")
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
             raise
@@ -151,6 +162,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     async def unbook(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
+        user: Member | None,
     ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, booking_date_arg)
@@ -161,19 +173,24 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
             if booking_date < date.today():
                 await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. You cannot unbook a desk in the past."
+                    f"Date {date_str} not available for booking. Desks cannot be unbooked in the past."
                 )
                 return
 
-            author = author_name(interaction)
-            desk_indices = booking_day.booked_desks(author)
+            if user:
+                user_name = user.display_name
+            else:
+                user_name = author_name(interaction)
+            desk_indices = booking_day.booked_desks(user_name)
             if desk_indices:
                 desk_index = desk_indices[0]
                 desk_num = desk_index + 1
                 booking_day.desk(desk_index).unbook()
-                await interaction.response.send_message(f"Desk {desk_num} is no longer booked for you {date_str}.")
+                await interaction.response.send_message(
+                    f"Desk {desk_num} is no longer booked for {user_name} {date_str}."
+                )
             else:
-                await interaction.response.send_message(f"You already have no desks booked for {date_str}.")
+                await interaction.response.send_message(f"{user_name} already has no desks booked for {date_str}.")
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
             raise
@@ -184,7 +201,10 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     )
     @app_commands.autocomplete(start_date=date_autocomplete)
     async def makeowned(
-        interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: Range[int, 1]
+        interaction: Interaction,
+        start_date: Transform[date | str, DateConverter],
+        user: Member | None,
+        desk: Range[int, 1],
     ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, start_date)
@@ -195,7 +215,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
             if booking_date < date.today():
                 await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. You cannot make a desk permanent retroactively."
+                    f"Date {date_str} not available for booking. Desks cannot be made permanent retroactively."
                 )
                 return
 
@@ -207,11 +227,14 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
             desk_index = desk - 1
 
-            author = author_name(interaction)
+            if user:
+                user_name = user.display_name
+            else:
+                user_name = author_name(interaction)
             try:
-                database.make_owned(booking_date, desk_index, author)
+                database.make_owned(booking_date, desk_index, user_name)
                 await interaction.response.send_message(
-                    f"Desk {desk} is now owned by {author} from {date_str} onwards."
+                    f"Desk {desk} is now owned by {user_name} from {date_str} onwards."
                 )
             except DeskAlreadyOwnedError as e:
                 await interaction.response.send_message(f"Desk {e.desk + 1} is already owned by {e.owner} on {e.day}.")

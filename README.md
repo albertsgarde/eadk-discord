@@ -5,7 +5,7 @@
     - [x] Optionally allow specifying a specific date.
       - [ ] Specify a range of dates.
     - [ ] Optionally allow specifying a specific desk.
-    - [ ] Optionally allow specifying someone else.
+    - [x] Optionally allow specifying someone else.
  - [x] Specify permanent desk holders.
  - [x] Unbook previously booked flex desks.
  - [x] Make a permanent desk available for a period of time.

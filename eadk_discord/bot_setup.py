@@ -119,6 +119,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
         user: Member | None,
+        desk: Range[int, 1] | None,
     ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, booking_date_arg)
@@ -137,20 +138,30 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 user_name = user.display_name
             else:
                 user_name = author_name(interaction)
-            desk_index = booking_day.get_available_desk()
-            if desk_index is None:
-                await interaction.response.send_message(f"No more desks are available for booking {date_str}.")
-                return
-            else:
-                desk_num = desk_index + 1
-                desk = booking_day.desk(desk_index)
-                success = desk.book(user_name)
-                if not success:
-                    raise Exception(
-                        f"INTERNAL ERROR: desk {desk_index} was not available, "
-                        "but available_desk() returned it as available"
+
+            if desk:
+                if desk < 1 or desk > len(booking_day.desks):
+                    await interaction.response.send_message(
+                        f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks."
                     )
-                await interaction.response.send_message(f"Desk {desk_num} has been booked for {user_name} {date_str}.")
+                    return
+                desk_index = desk - 1
+                desk_num = desk
+                if booking_day.desk(desk_index).booker:
+                    await interaction.response.send_message(
+                        f"Desk {desk} is already booked by {booking_day.desk(desk_index).booker} on {date_str}."
+                    )
+                    return
+            else:
+                desk_index_option = booking_day.get_available_desk()
+                if desk_index_option is not None:
+                    desk_index = desk_index_option
+                    desk_num = desk_index + 1
+                else:
+                    await interaction.response.send_message(f"No more desks are available for booking on {date_str}.")
+                    return
+            booking_day.desk(desk_index).book(user_name)
+            await interaction.response.send_message(f"Desk {desk_num} has been booked for {user_name} on {date_str}.")
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
             raise
@@ -163,6 +174,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
         user: Member | None,
+        desk: Range[int, 1] | None,
     ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, booking_date_arg)
@@ -181,16 +193,28 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 user_name = user.display_name
             else:
                 user_name = author_name(interaction)
-            desk_indices = booking_day.booked_desks(user_name)
-            if desk_indices:
-                desk_index = desk_indices[0]
-                desk_num = desk_index + 1
-                booking_day.desk(desk_index).unbook()
-                await interaction.response.send_message(
-                    f"Desk {desk_num} is no longer booked for {user_name} {date_str}."
-                )
+
+            if desk is not None:
+                if desk < 1 or desk > len(booking_day.desks):
+                    await interaction.response.send_message(
+                        f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks."
+                    )
+                    return
+                desk_index = desk - 1
+                desk_num = desk
             else:
-                await interaction.response.send_message(f"{user_name} already has no desks booked for {date_str}.")
+                desk_indices = booking_day.booked_desks(user_name)
+                if desk_indices:
+                    desk_index = desk_indices[0]
+                    desk_num = desk_index + 1
+                else:
+                    await interaction.response.send_message(f"{user_name} already has no desks booked for {date_str}.")
+                    return
+
+            booking_day.desk(desk_index).unbook()
+            await interaction.response.send_message(
+                f"Desk {desk_num} is no longer booked for {user_name} on {date_str}."
+            )
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
             raise

@@ -4,7 +4,7 @@
  - [x] Book a desk for a day in the office.
     - [x] Optionally allow specifying a specific date.
       - [ ] Specify a range of dates.
-    - [ ] Optionally allow specifying a specific desk.
+    - [x] Optionally allow specifying a specific desk.
     - [x] Optionally allow specifying someone else.
  - [x] Specify permanent desk holders.
  - [x] Unbook previously booked flex desks.

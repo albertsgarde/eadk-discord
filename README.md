@@ -2,7 +2,7 @@
 
 # Capabilities
  - [x] Book a desk for a day in the office.
-    - [ ] Optionally allow specifying a specific date.
+    - [x] Optionally allow specifying a specific date.
       - [ ] Specify a range of dates.
     - [ ] Optionally allow specifying a specific desk.
     - [ ] Optionally allow specifying someone else.

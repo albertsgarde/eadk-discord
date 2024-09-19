@@ -3,9 +3,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import discord
-from discord import Intents, Interaction
+from discord import Intents, Interaction, app_commands
 from discord.abc import Snowflake
-from discord.app_commands import Transform
+from discord.app_commands import Choice, Range, Transform
 from discord.ext import commands
 from discord.ext.commands import Bot, Context
 
@@ -56,6 +56,11 @@ def author_name(interaction: Interaction) -> str:
     return interaction.user.display_name
 
 
+async def date_autocomplete(interaction: Interaction, current: str) -> list[Choice[str]]:
+    options = ["today", "tomorrow", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    return [Choice(name=option, value=option) for option in options if option.startswith(current.lower())]
+
+
 def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     database = Database.load_or_create(database_path, start_date=date.today(), starting_days=7, num_desks=6)
     database.save(database_path)
@@ -66,6 +71,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     bot = Bot(command_prefix="!", intents=intents)
 
     @bot.tree.command(name="info", description="Get available desks for today or tomorrow.", guilds=guilds)
+    @app_commands.autocomplete(booking_date_arg=date_autocomplete)
+    @app_commands.rename(booking_date_arg="date")
     async def info(interaction: Interaction, booking_date_arg: Transform[date | str, DateConverter] | None) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, booking_date_arg)
@@ -99,6 +106,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             raise
 
     @bot.tree.command(name="book", description="Book a desk for today or tomorrow.", guilds=guilds)
+    @app_commands.autocomplete(booking_date_arg=date_autocomplete)
+    @app_commands.rename(booking_date_arg="date")
     async def book(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
@@ -137,6 +146,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         database.save(database_path)
 
     @bot.tree.command(name="unbook", description="Unbook a desk for today or tomorrow.", guilds=guilds)
+    @app_commands.autocomplete(booking_date_arg=date_autocomplete)
+    @app_commands.rename(booking_date_arg="date")
     async def unbook(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
@@ -171,7 +182,10 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @bot.tree.command(
         name="makeowned", description="Make a user the owner of the desk from a specific date", guilds=guilds
     )
-    async def makeowned(interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: int) -> None:
+    @app_commands.autocomplete(start_date=date_autocomplete)
+    async def makeowned(
+        interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: Range[int, 1]
+    ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, start_date)
             if handle_date_result is None:
@@ -208,7 +222,10 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         database.save(database_path)
 
     @bot.tree.command(name="makeflex", description="Make a desk a flex desk from a specific date", guilds=guilds)
-    async def makeflex(interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: int) -> None:
+    @app_commands.autocomplete(start_date=date_autocomplete)
+    async def makeflex(
+        interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: Range[int, 1]
+    ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, start_date)
             if handle_date_result is None:

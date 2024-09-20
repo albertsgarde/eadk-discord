@@ -108,9 +108,9 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             else:
                 booked_desks_str = ""
 
-            await interaction.response.send_message(f"{available_desks_str}{booked_desks_str}")
+            await interaction.response.send_message(f"{available_desks_str}{booked_desks_str}", ephemeral=True)
         except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
 
     @bot.tree.command(name="book", description="Book a desk for today or tomorrow.", guilds=guilds)
@@ -131,7 +131,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
             if booking_date < date.today():
                 await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. Desks cannot be booked in the past."
+                    f"Date {date_str} not available for booking. Desks cannot be booked in the past.", ephemeral=True
                 )
                 return
 
@@ -143,14 +143,15 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             if desk:
                 if desk < 1 or desk > len(booking_day.desks):
                     await interaction.response.send_message(
-                        f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks."
+                        f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
                     )
                     return
                 desk_index = desk - 1
                 desk_num = desk
                 if booking_day.desk(desk_index).booker:
                     await interaction.response.send_message(
-                        f"Desk {desk} is already booked by {booking_day.desk(desk_index).booker} on {date_str}."
+                        f"Desk {desk} is already booked by {booking_day.desk(desk_index).booker} on {date_str}.",
+                        ephemeral=True,
                     )
                     return
             else:
@@ -159,12 +160,14 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                     desk_index = desk_index_option
                     desk_num = desk_index + 1
                 else:
-                    await interaction.response.send_message(f"No more desks are available for booking on {date_str}.")
+                    await interaction.response.send_message(
+                        f"No more desks are available for booking on {date_str}.", ephemeral=True
+                    )
                     return
             booking_day.desk(desk_index).book(user_name)
             await interaction.response.send_message(f"Desk {desk_num} has been booked for {user_name} on {date_str}.")
         except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
         database.save(database_path)
 
@@ -186,7 +189,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
             if booking_date < date.today():
                 await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. Desks cannot be unbooked in the past."
+                    f"Date {date_str} not available for booking. Desks cannot be unbooked in the past.", ephemeral=True
                 )
                 return
 
@@ -198,7 +201,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             if desk is not None:
                 if desk < 1 or desk > len(booking_day.desks):
                     await interaction.response.send_message(
-                        f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks."
+                        f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
                     )
                     return
                 desk_index = desk - 1
@@ -209,7 +212,9 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                     desk_index = desk_indices[0]
                     desk_num = desk_index + 1
                 else:
-                    await interaction.response.send_message(f"{user_name} already has no desks booked for {date_str}.")
+                    await interaction.response.send_message(
+                        f"{user_name} already has no desks booked for {date_str}.", ephemeral=True
+                    )
                     return
 
             booking_day.desk(desk_index).unbook()
@@ -217,7 +222,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 f"Desk {desk_num} is no longer booked for {user_name} on {date_str}."
             )
         except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
         database.save(database_path)
 
@@ -240,13 +245,14 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
             if booking_date < date.today():
                 await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. Desks cannot be made permanent retroactively."
+                    f"Date {date_str} not available for booking. Desks cannot be made permanent retroactively.",
+                    ephemeral=True,
                 )
                 return
 
             if desk < 1 or desk > len(booking_day.desks):
                 await interaction.response.send_message(
-                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks."
+                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
                 )
                 return
 
@@ -262,10 +268,12 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                     f"Desk {desk} is now owned by {user_name} from {date_str} onwards."
                 )
             except DeskAlreadyOwnedError as e:
-                await interaction.response.send_message(f"Desk {e.desk + 1} is already owned by {e.owner} on {e.day}.")
+                await interaction.response.send_message(
+                    f"Desk {e.desk + 1} is already owned by {e.owner} on {e.day}.", ephemeral=True
+                )
                 return
         except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
         database.save(database_path)
 
@@ -283,13 +291,14 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
             if booking_date < date.today():
                 await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. You cannot make a desk permanent retroactively."
+                    f"Date {date_str} not available for booking. You cannot make a desk permanent retroactively.",
+                    ephemeral=True,
                 )
                 return
 
             if desk < 1 or desk > len(booking_day.desks):
                 await interaction.response.send_message(
-                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks."
+                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
                 )
                 return
 
@@ -298,7 +307,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             database.make_flex(booking_date, desk_index)
             await interaction.response.send_message(f"Desk {desk} is now a flex desk from {date_str} onwards.")
         except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP")
+            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
         database.save(database_path)
 

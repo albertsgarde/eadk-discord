@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -307,17 +308,17 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         """Sync commands"""
         for guild in guilds:
             synced_commands = await ctx.bot.tree.sync(guild=guild)
-            print(f"Synced {synced_commands} commands to guild {guild}")
+            logging.info(f"Synced {synced_commands} commands to guild {guild}")
 
     @bot.command()
     @commands.is_owner()
     async def syncglobal(ctx: Context) -> None:
         """Sync commands"""
         synced_commands = await ctx.bot.tree.sync()
-        print(f"Synced {synced_commands} commands globally")
+        logging.info(f"Synced {synced_commands} commands globally")
 
     @bot.event
     async def on_ready():
-        print(f"We have logged in as {bot.user}")
+        logging.info(f"We have logged in as {bot.user}")
 
     return bot

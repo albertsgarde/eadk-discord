@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -7,6 +8,8 @@ from discord.abc import Snowflake
 from . import bot_setup
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+
     bot_token_option: str | None = os.getenv("DISCORD_BOT_TOKEN")
     if bot_token_option is None:
         raise ValueError("DISCORD_BOT_TOKEN is not set in environment variables")

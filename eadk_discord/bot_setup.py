@@ -71,13 +71,12 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
     bot = Bot(command_prefix="!", intents=intents)
 
-    @bot.tree.command(name="info", description="Get available desks for today or tomorrow.", guilds=guilds)
+    @bot.tree.command(name="info", description="Get current booking status.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
     @app_commands.rename(booking_date_arg="date")
     async def info(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
-        user: Member | None,
     ) -> None:
         try:
             handle_date_result = await handle_date(database, interaction, booking_date_arg)
@@ -85,35 +84,26 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 return
             booking_date, booking_day = handle_date_result
 
-            date_str = format_date(booking_date)
-            available_desks = booking_day.available_desks()
-            available_desks_str = (
-                f"Available desks {date_str}: " f"{', '.join(str(desk + 1) for desk in available_desks)}"
-                if available_desks
-                else f"No desks are available {date_str}."
+            table_data = [
+                [desk_index + 1, desk.booker if desk.booker else "**Free**", desk.owner if desk.owner else "**Flex**"]
+                for desk_index, desk in enumerate(booking_day.desks)
+            ]
+
+            desk_numbers_str = "\n".join(str(row[0]) for row in table_data)
+            desk_bookers_str = "\n".join(str(row[1]) for row in table_data)
+            desk_owners_str = "\n".join(str(row[2]) for row in table_data)
+
+            await interaction.response.send_message(
+                embed=discord.Embed(title="Desk availability", description=f"For {booking_date}")
+                .add_field(name="Desk", value=desk_numbers_str, inline=True)
+                .add_field(name="Booked by", value=desk_bookers_str, inline=True)
+                .add_field(name="Owner", value=desk_owners_str, inline=True)
             )
-
-            if user:
-                user_name = user.display_name
-            else:
-                user_name = author_name(interaction)
-            booked_desks = booking_day.booked_desks(user_name)
-            if len(booked_desks) == 1:
-                booked_desk = booked_desks[0]
-                booked_desk_num = booked_desk + 1
-                booked_desks_str = f"\nDesk {booked_desk_num} is booked for {user_name}."
-            elif len(booked_desks) > 1:
-                desk_nums_str = ", ".join(str(desk + 1) for desk in booked_desks)
-                booked_desks_str = f"\nDesks {desk_nums_str} are booked for {user_name}."
-            else:
-                booked_desks_str = ""
-
-            await interaction.response.send_message(f"{available_desks_str}{booked_desks_str}", ephemeral=True)
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
 
-    @bot.tree.command(name="book", description="Book a desk for today or tomorrow.", guilds=guilds)
+    @bot.tree.command(name="book", description="Book a desk.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
     @app_commands.rename(booking_date_arg="date")
     async def book(
@@ -171,7 +161,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             raise
         database.save(database_path)
 
-    @bot.tree.command(name="unbook", description="Unbook a desk for today or tomorrow.", guilds=guilds)
+    @bot.tree.command(name="unbook", description="Unbook a desk.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
     @app_commands.rename(booking_date_arg="date")
     async def unbook(
@@ -227,7 +217,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         database.save(database_path)
 
     @bot.tree.command(
-        name="makeowned", description="Make a user the owner of the desk from a specific date", guilds=guilds
+        name="makeowned", description="Make a user the owner of the desk from a specific date onwards", guilds=guilds
     )
     @app_commands.autocomplete(start_date=date_autocomplete)
     async def makeowned(
@@ -277,7 +267,9 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             raise
         database.save(database_path)
 
-    @bot.tree.command(name="makeflex", description="Make a desk a flex desk from a specific date", guilds=guilds)
+    @bot.tree.command(
+        name="makeflex", description="Make a desk a flex desk from a specific date onwards", guilds=guilds
+    )
     @app_commands.autocomplete(start_date=date_autocomplete)
     async def makeflex(
         interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: Range[int, 1]

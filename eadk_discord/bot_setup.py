@@ -94,7 +94,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             desk_owners_str = "\n".join(str(row[2]) for row in table_data)
 
             await interaction.response.send_message(
-                embed=discord.Embed(title="Desk availability", description=f"For {booking_date}")
+                embed=discord.Embed(title="Desk availability", description=f"{booking_date.strftime('%A %Y-%m-%d')}")
                 .add_field(name="Desk", value=desk_numbers_str, inline=True)
                 .add_field(name="Booked by", value=desk_bookers_str, inline=True)
                 .add_field(name="Owner", value=desk_owners_str, inline=True)

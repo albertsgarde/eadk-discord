@@ -116,6 +116,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @bot.tree.command(name="book", description="Book a desk.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
     @app_commands.rename(booking_date_arg="date")
+    @app_commands.rename(desk="desk_id")
     async def book(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
@@ -185,6 +186,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @bot.tree.command(name="unbook", description="Unbook a desk.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
     @app_commands.rename(booking_date_arg="date")
+    @app_commands.rename(desk="desk_id")
     async def unbook(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
@@ -261,6 +263,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         name="makeowned", description="Make a user the owner of the desk from a specific date onwards", guilds=guilds
     )
     @app_commands.autocomplete(start_date=date_autocomplete)
+    @app_commands.rename(desk="desk_id")
     async def makeowned(
         interaction: Interaction,
         start_date: Transform[date | str, DateConverter],
@@ -315,6 +318,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         name="makeflex", description="Make a desk a flex desk from a specific date onwards", guilds=guilds
     )
     @app_commands.autocomplete(start_date=date_autocomplete)
+    @app_commands.rename(desk="desk_id")
     async def makeflex(
         interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: Range[int, 1]
     ) -> None:

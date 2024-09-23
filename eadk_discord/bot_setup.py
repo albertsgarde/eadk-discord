@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import discord
 from discord import Intents, Interaction, Member, app_commands
 from discord.abc import Snowflake
-from discord.app_commands import Choice, Range, Transform
+from discord.app_commands import AppCommandError, Choice, Range, Transform
 from discord.ext import commands
 from discord.ext.commands import Bot, Context
 
@@ -378,5 +378,12 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @bot.event
     async def on_ready():
         logging.info(f"We have logged in as {bot.user}")
+
+    @bot.tree.error
+    async def on_error(interaction: Interaction, error: AppCommandError) -> None:
+        if isinstance(error, discord.app_commands.errors.MissingRole):
+            await interaction.response.send_message("You do not have permission to run this command.", ephemeral=True)
+            return
+        raise error
 
     return bot

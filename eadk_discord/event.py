@@ -12,7 +12,7 @@ class SetNumDesks(BaseModel):
 class BookDesk(BaseModel):
     date: Date = Field()
     desk_index: int = Field(ge=0)
-    user: str = Field(min_length=1)
+    user: int = Field()
 
 
 class UnbookDesk(BaseModel):
@@ -23,7 +23,7 @@ class UnbookDesk(BaseModel):
 class MakeOwned(BaseModel):
     start_date: Date = Field()
     desk_index: int = Field(ge=0)
-    user: str = Field(min_length=1)
+    user: int = Field()
 
 
 class MakeFlex(BaseModel):
@@ -32,6 +32,6 @@ class MakeFlex(BaseModel):
 
 
 class Event(BaseModel):
-    author: str | None = Field()
+    author: int | None = Field()
     time: DateTime = Field()
     event: SetNumDesks | BookDesk | UnbookDesk | MakeOwned | MakeFlex = Field()

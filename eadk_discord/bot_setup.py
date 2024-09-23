@@ -10,6 +10,7 @@ from discord.app_commands import Choice, Range, Transform
 from discord.ext import commands
 from discord.ext.commands import Bot, Context
 
+from eadk_discord import fmt
 from eadk_discord.database import Database
 from eadk_discord.date_converter import DateConverter
 from eadk_discord.event import BookDesk, Event, MakeFlex, MakeOwned, SetNumDesks, UnbookDesk
@@ -55,8 +56,8 @@ async def handle_date(
     return booking_date, booking_day
 
 
-def author_name(interaction: Interaction) -> str:
-    return interaction.user.display_name
+def author_id(interaction: Interaction) -> int:
+    return interaction.user.id
 
 
 async def date_autocomplete(interaction: Interaction, current: str) -> list[Choice[str]]:
@@ -76,6 +77,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
     intents: Intents = discord.Intents.default()
     intents.message_content = True
+    intents.members = True
 
     bot = Bot(command_prefix="!", intents=intents)
 
@@ -92,14 +94,13 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 return
             booking_date, booking_day = handle_date_result
 
-            table_data = [
-                [desk_index + 1, desk.booker if desk.booker else "**Free**", desk.owner if desk.owner else "**Flex**"]
-                for desk_index, desk in enumerate(booking_day.desks)
-            ]
-
-            desk_numbers_str = "\n".join(str(row[0]) for row in table_data)
-            desk_bookers_str = "\n".join(str(row[1]) for row in table_data)
-            desk_owners_str = "\n".join(str(row[2]) for row in table_data)
+            desk_numbers_str = "\n".join(str(i + 1) for i in range(len(booking_day.desks)))
+            desk_bookers_str = "\n".join(
+                fmt.user(interaction, desk.booker) if desk.booker else "**Free**" for desk in booking_day.desks
+            )
+            desk_owners_str = "\n".join(
+                fmt.user(interaction, desk.owner) if desk.owner else "**Flex**" for desk in booking_day.desks
+            )
 
             await interaction.response.send_message(
                 embed=discord.Embed(title="Desk availability", description=f"{booking_date.strftime('%A %Y-%m-%d')}")
@@ -135,9 +136,9 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 return
 
             if user:
-                user_name = user.display_name
+                user_id = user.id
             else:
-                user_name = author_name(interaction)
+                user_id = author_id(interaction)
 
             if desk:
                 if desk < 1 or desk > len(booking_day.desks):
@@ -166,16 +167,16 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             try:
                 database.handle_event(
                     Event(
-                        author=user_name,
+                        author=user_id,
                         time=datetime.now(),
-                        event=BookDesk(date=booking_date, desk_index=desk_index, user=user_name),
+                        event=BookDesk(date=booking_date, desk_index=desk_index, user=user_id),
                     )
                 )
                 await interaction.response.send_message(
-                    f"Desk {desk_num} has been booked for {user_name} on {date_str}."
+                    f"Desk {desk_num} has been booked for {fmt.user(interaction, user_id)} on {date_str}."
                 )
             except HandleEventError as e:
-                await interaction.response.send_message(e.message())
+                await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
@@ -213,38 +214,44 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 desk_num = desk
             else:
                 if user:
-                    user_name = user.display_name
+                    user_id = user.id
                 else:
-                    user_name = author_name(interaction)
-                desk_indices = booking_day.booked_desks(user_name)
+                    user_id = author_id(interaction)
+                desk_indices = booking_day.booked_desks(user_id)
                 if desk_indices:
                     desk_index = desk_indices[0]
                     desk_num = desk_index + 1
                 else:
                     await interaction.response.send_message(
-                        f"{user_name} already has no desks booked for {date_str}.", ephemeral=True
+                        f"{user_id} already has no desks booked for {date_str}.", ephemeral=True
                     )
                     return
 
             try:
                 desk_owner = booking_day.desk(desk_index).owner
-                if user_name and user_name != desk_owner:
+                if user_id and user_id != desk_owner:
                     await interaction.response.send_message(
-                        f"Desk {desk_num} is not booked by {user_name} on {date_str}.", ephemeral=True
+                        f"Desk {desk_num} is not booked by {fmt.user(interaction, user_id)} on {date_str}.",
+                        ephemeral=True,
                     )
                     return
-                database.handle_event(
-                    Event(
-                        author=user_name,
-                        time=datetime.now(),
-                        event=UnbookDesk(date=booking_date, desk_index=desk_index),
+                if desk_owner:
+                    database.handle_event(
+                        Event(
+                            author=user_id,
+                            time=datetime.now(),
+                            event=UnbookDesk(date=booking_date, desk_index=desk_index),
+                        )
                     )
-                )
-                await interaction.response.send_message(
-                    f"Desk {desk_num} is no longer booked for {desk_owner} on {date_str}."
-                )
+                    await interaction.response.send_message(
+                        f"Desk {desk_num} is no longer booked for {fmt.user(interaction, desk_owner)} on {date_str}."
+                    )
+                else:
+                    await interaction.response.send_message(
+                        f"Desk {desk_num} is already free on {date_str}.", ephemeral=True
+                    )
             except HandleEventError as e:
-                await interaction.response.send_message(e.message())
+                await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
@@ -283,22 +290,22 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             desk_index = desk - 1
 
             if user:
-                user_name = user.display_name
+                user_id = user.id
             else:
-                user_name = author_name(interaction)
+                user_id = author_id(interaction)
             try:
                 database.handle_event(
                     Event(
-                        author=user_name,
+                        author=user_id,
                         time=datetime.now(),
-                        event=MakeOwned(start_date=booking_date, desk_index=desk_index, user=user_name),
+                        event=MakeOwned(start_date=booking_date, desk_index=desk_index, user=user_id),
                     )
                 )
                 await interaction.response.send_message(
-                    f"Desk {desk} is now owned by {user_name} from {date_str} onwards."
+                    f"Desk {desk} is now owned by {fmt.user(interaction, user_id)} from {date_str} onwards."
                 )
             except HandleEventError as e:
-                await interaction.response.send_message(e.message())
+                await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise
@@ -336,14 +343,14 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             try:
                 database.handle_event(
                     Event(
-                        author=author_name(interaction),
+                        author=author_id(interaction),
                         time=datetime.now(),
                         event=MakeFlex(start_date=booking_date, desk_index=desk_index),
                     )
                 )
                 await interaction.response.send_message(f"Desk {desk} is now a flex desk from {date_str} onwards.")
             except HandleEventError as e:
-                await interaction.response.send_message(e.message())
+                await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
         except Exception:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
             raise

@@ -2,7 +2,7 @@ import itertools
 from dataclasses import dataclass
 from datetime import date as Date  # noqa: N812
 from datetime import timedelta as TimeDelta  # noqa: N812
-from typing import Sequence  # noqa: N812
+from typing import Callable, Sequence  # noqa: N812
 
 from pydantic import BaseModel, Field
 
@@ -13,10 +13,10 @@ MAX_FUTURE_DAYS: int = 366
 
 
 class DeskStatus(BaseModel):
-    booker: str | None = Field(serialization_alias="booker")
-    owner: str | None = Field(serialization_alias="owner")
+    booker: int | None = Field(serialization_alias="booker")
+    owner: int | None = Field(serialization_alias="owner")
 
-    def _book(self, user: str) -> bool:
+    def _book(self, user: int) -> bool:
         """
         Returns True if the desk was successfully booked, False if the desk was already booked.
         """
@@ -36,7 +36,7 @@ class DeskStatus(BaseModel):
         else:
             return False
 
-    def _make_owned(self, desk: int, user: str) -> bool:
+    def _make_owned(self, user: int) -> bool:
         """
         Returns True if the desk was successfully permanently booked, False if the desk was already permanently booked.
         """
@@ -48,7 +48,7 @@ class DeskStatus(BaseModel):
             self.owner = user
             return True
 
-    def _make_flex(self, desk: int) -> bool:
+    def _make_flex(self) -> bool:
         """
         Returns True if the desk was successfully unpermanently booked, False if the desk was not permanently booked.
         """
@@ -101,7 +101,7 @@ class Day(BaseModel):
         """
         return [i for i, desk in enumerate(self.desks) if desk.booker is None]
 
-    def booked_desks(self, member: str) -> list[int]:
+    def booked_desks(self, member: int) -> list[int]:
         """
         Returns the index of the desk booked by the given member, or None if the member has not booked a desk.
         """
@@ -109,7 +109,7 @@ class Day(BaseModel):
 
 
 class EventError(Exception):
-    def message(self) -> str:
+    def message(self, format_user: Callable[[int], str]) -> str:
         raise NotImplementedError()
 
 
@@ -118,8 +118,8 @@ class HandleEventError(Exception):
     event: Event
     error: EventError
 
-    def message(self) -> str:
-        return self.error.message()
+    def message(self, format_user: Callable[[int], str]) -> str:
+        return self.error.message(format_user)
 
 
 @dataclass
@@ -131,7 +131,7 @@ class DateTooEarlyError(EventError):
     date: Date
     start_date: Date
 
-    def message(self) -> str:
+    def message(self, format_user: Callable[[int], str]) -> str:
         return f"Date {self.date} is before the start date {self.start_date}."
 
 
@@ -141,20 +141,29 @@ class RemoveDeskError(EventError):
     Raised when a desk cannot be removed because it is still booked.
     """
 
-    booker: str | None
-    owner: str | None
+    booker: int | None
+    owner: int | None
     desk_index: int
     day: Date
 
-    def message(self) -> str:
+    def message(self, format_user: Callable[[int], str]) -> str:
         if self.booker and self.owner is None:
-            return f"Desk {self.desk_index + 1} on {self.day} cannot be removed because it is booked by {self.booker}"
-        if (self.booker is None and self.owner) or self.booker == self.owner:
-            return f"Desk {self.desk_index + 1} on {self.day} cannot be removed because it is owned by {self.owner}"
-        return (
-            f"Desk {self.desk_index + 1} on {self.day} cannot be removed "
-            f"because it is booked by {self.booker} and owned by {self.owner}."
-        )
+            return (
+                f"Desk {self.desk_index + 1} on {self.day} cannot be removed "
+                f"because it is booked by {format_user(self.booker)}"
+            )
+        elif (self.booker is None and self.owner) or self.booker and self.booker == self.owner:
+            return (
+                f"Desk {self.desk_index + 1} on {self.day} cannot be removed "
+                f"because it is owned by {format_user(self.owner)}"
+            )
+        elif self.booker and self.owner:
+            return (
+                f"Desk {self.desk_index + 1} on {self.day} cannot be removed "
+                f"because it is booked by {format_user(self.booker)} and owned by {format_user(self.owner)}."
+            )
+        else:
+            raise ValueError("booker and owner cannot both be None")
 
 
 @dataclass
@@ -167,7 +176,7 @@ class NonExistentDeskError(EventError):
     num_desks: int
     day: Date
 
-    def message(self) -> str:
+    def message(self, format_user: Callable[[int], str]) -> str:
         return f"Desk {self.desk + 1} on {self.day} does not exist. On that day there are only {self.num_desks} desks."
 
 
@@ -177,12 +186,12 @@ class DeskAlreadyBookedError(EventError):
     Raised when trying to book a desk that is already booked.
     """
 
-    booker: str
+    booker: int
     desk: int
     day: Date
 
-    def message(self) -> str:
-        return f"Desk {self.desk + 1} on {self.day} is already booked by {self.booker}."
+    def message(self, format_user: Callable[[int], str]) -> str:
+        return f"Desk {self.desk + 1} on {self.day} is already booked by {format_user(self.booker)}."
 
 
 @dataclass
@@ -194,7 +203,7 @@ class DeskNotBookedError(EventError):
     desk: int
     day: Date
 
-    def message(self) -> str:
+    def message(self, format_user: Callable[[int], str]) -> str:
         return f"Desk {self.desk + 1} on {self.day} is not booked."
 
 
@@ -204,12 +213,12 @@ class DeskAlreadyOwnedError(EventError):
     Raised when trying to permanently book a desk that is already permanently booked.
     """
 
-    owner: str
+    owner: int
     desk: int
     day: Date
 
-    def message(self) -> str:
-        return f"Desk {self.desk + 1} on {self.day} is already owned by {self.owner}."
+    def message(self, format_user: Callable[[int], str]) -> str:
+        return f"Desk {self.desk + 1} on {self.day} is already owned by {format_user(self.owner)}."
 
 
 @dataclass
@@ -221,7 +230,7 @@ class DeskNotOwnedError(EventError):
     desk: int
     day: Date
 
-    def message(self) -> str:
+    def message(self, format_user: Callable[[int], str]) -> str:
         return f"Desk {self.desk + 1} on {self.day} is already a flex desk."
 
 
@@ -315,8 +324,7 @@ class State(BaseModel):
         for day in self.days[day_index:]:
             if desk_index >= len(day.desks):
                 break
-            day.desks[desk_index].owner = event.user
-            day.desks[desk_index].booker = event.user
+            day.desks[desk_index]._make_owned(event.user)
 
     def _make_flex(self, event: MakeFlex) -> None:
         day, day_index = self.day(event.start_date)
@@ -331,6 +339,4 @@ class State(BaseModel):
             if desk_index >= len(day.desks) or day.desks[desk_index].owner != desk_owner:
                 break
             desk = day.desks[desk_index]
-            desk.owner = None
-            if desk.booker == desk_owner:
-                desk.booker = None
+            desk._make_flex()

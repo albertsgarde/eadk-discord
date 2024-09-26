@@ -18,6 +18,10 @@ from eadk_discord.state import Day, HandleEventError, State
 
 TIME_ZONE = ZoneInfo("Europe/Copenhagen")
 
+TEST_SERVER_ROLE_ID = ***REMOVED***
+EADK_DESK_ADMIN_ID = ***REMOVED***
+EADK_DESK_REGULAR_ID = ***REMOVED***
+
 
 def format_date(date: date) -> str:
     return date.isoformat()
@@ -121,6 +125,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.rename(booking_date_arg="date")
     @app_commands.rename(desk="desk_id")
     @app_commands.check(channel_check)
+    @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID, EADK_DESK_REGULAR_ID)
     async def book(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
@@ -188,6 +193,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.rename(booking_date_arg="date")
     @app_commands.rename(desk="desk_id")
     @app_commands.check(channel_check)
+    @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID, EADK_DESK_REGULAR_ID)
     async def unbook(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
@@ -263,6 +269,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.autocomplete(start_date=date_autocomplete)
     @app_commands.rename(desk="desk_id")
     @app_commands.check(channel_check)
+    @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID)
     async def makeowned(
         interaction: Interaction,
         start_date: Transform[date | str, DateConverter],
@@ -315,6 +322,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.autocomplete(start_date=date_autocomplete)
     @app_commands.rename(desk="desk_id")
     @app_commands.check(channel_check)
+    @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID)
     async def makeflex(
         interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: Range[int, 1]
     ) -> None:
@@ -373,12 +381,15 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
     @bot.tree.error
     async def on_error(interaction: Interaction, error: AppCommandError) -> None:
-        if isinstance(error, discord.app_commands.errors.MissingRole):
+        print(type(error))
+        if isinstance(error, discord.app_commands.errors.MissingAnyRole) or isinstance(
+            error, discord.app_commands.errors.MissingRole
+        ):
             await interaction.response.send_message("You do not have permission to run this command.", ephemeral=True)
             return
         if isinstance(error, discord.app_commands.errors.CheckFailure):
             await interaction.response.send_message(
-                "This command can only be run in the office channel.", ephemeral=True
+                "This command can only be used in the office channel.", ephemeral=True
             )
             return
         else:

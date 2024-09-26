@@ -13,5 +13,5 @@
     - [x] Default to getting information for today, or tomorrow after 17.
  - [ ] Additional interface through Google Home (voice or tapping interface).
  - [ ] Sync to Google Sheets or similar.
- - [ ] Event ledger based state to allow recovery and statistics.
- - [ ] Nice and user-friendly `/info` command.
+ - [x] Event ledger based state to allow recovery and statistics.
+ - [x] Nice and user-friendly `/info` command.

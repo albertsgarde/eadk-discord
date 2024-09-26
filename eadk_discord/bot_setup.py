@@ -65,6 +65,10 @@ async def date_autocomplete(interaction: Interaction, current: str) -> list[Choi
     return [Choice(name=option, value=option) for option in options if option.startswith(current.lower())]
 
 
+async def channel_check(interaction: Interaction[discord.Client]) -> bool:
+    return interaction.channel_id == ***REMOVED*** or interaction.channel_id == ***REMOVED***
+
+
 def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     if database_path.exists():
         database = Database.load(database_path)
@@ -84,34 +88,31 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @bot.tree.command(name="info", description="Get current booking status.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
     @app_commands.rename(booking_date_arg="date")
+    @app_commands.check(channel_check)
     async def info(
         interaction: Interaction,
         booking_date_arg: Transform[date | str, DateConverter] | None,
     ) -> None:
-        try:
-            handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
-            if handle_date_result is None:
-                return
-            booking_date, booking_day = handle_date_result
+        handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
+        if handle_date_result is None:
+            return
+        booking_date, booking_day = handle_date_result
 
-            desk_numbers_str = "\n".join(str(i + 1) for i in range(len(booking_day.desks)))
-            desk_bookers_str = "\n".join(
-                fmt.user(interaction, desk.booker) if desk.booker else "**Free**" for desk in booking_day.desks
-            )
-            desk_owners_str = "\n".join(
-                fmt.user(interaction, desk.owner) if desk.owner else "**Flex**" for desk in booking_day.desks
-            )
+        desk_numbers_str = "\n".join(str(i + 1) for i in range(len(booking_day.desks)))
+        desk_bookers_str = "\n".join(
+            fmt.user(interaction, desk.booker) if desk.booker else "**Free**" for desk in booking_day.desks
+        )
+        desk_owners_str = "\n".join(
+            fmt.user(interaction, desk.owner) if desk.owner else "**Flex**" for desk in booking_day.desks
+        )
 
-            await interaction.response.send_message(
-                embed=discord.Embed(title="Desk availability", description=f"{booking_date.strftime('%A %Y-%m-%d')}")
-                .add_field(name="Desk", value=desk_numbers_str, inline=True)
-                .add_field(name="Booked by", value=desk_bookers_str, inline=True)
-                .add_field(name="Owner", value=desk_owners_str, inline=True),
-                ephemeral=True,
-            )
-        except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
-            raise
+        await interaction.response.send_message(
+            embed=discord.Embed(title="Desk availability", description=f"{booking_date.strftime('%A %Y-%m-%d')}")
+            .add_field(name="Desk", value=desk_numbers_str, inline=True)
+            .add_field(name="Booked by", value=desk_bookers_str, inline=True)
+            .add_field(name="Owner", value=desk_owners_str, inline=True),
+            ephemeral=True,
+        )
 
     @bot.tree.command(name="book", description="Book a desk.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
@@ -123,64 +124,60 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         user: Member | None,
         desk: Range[int, 1] | None,
     ) -> None:
+        handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
+        if handle_date_result is None:
+            return
+        booking_date, booking_day = handle_date_result
+        date_str = format_date(booking_date)
+
+        if booking_date < date.today():
+            await interaction.response.send_message(
+                f"Date {date_str} not available for booking. Desks cannot be booked in the past.", ephemeral=True
+            )
+            return
+
+        if user:
+            user_id = user.id
+        else:
+            user_id = author_id(interaction)
+
+        if desk:
+            if desk < 1 or desk > len(booking_day.desks):
+                await interaction.response.send_message(
+                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
+                )
+                return
+            desk_index = desk - 1
+            desk_num = desk
+            if booking_day.desk(desk_index).booker:
+                await interaction.response.send_message(
+                    f"Desk {desk} is already booked by {booking_day.desk(desk_index).booker} on {date_str}.",
+                    ephemeral=True,
+                )
+                return
+        else:
+            desk_index_option = booking_day.get_available_desk()
+            if desk_index_option is not None:
+                desk_index = desk_index_option
+                desk_num = desk_index + 1
+            else:
+                await interaction.response.send_message(
+                    f"No more desks are available for booking on {date_str}.", ephemeral=True
+                )
+                return
         try:
-            handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
-            if handle_date_result is None:
-                return
-            booking_date, booking_day = handle_date_result
-            date_str = format_date(booking_date)
-
-            if booking_date < date.today():
-                await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. Desks cannot be booked in the past.", ephemeral=True
+            database.handle_event(
+                Event(
+                    author=author_id(interaction),
+                    time=datetime.now(),
+                    event=BookDesk(date=booking_date, desk_index=desk_index, user=user_id),
                 )
-                return
-
-            if user:
-                user_id = user.id
-            else:
-                user_id = author_id(interaction)
-
-            if desk:
-                if desk < 1 or desk > len(booking_day.desks):
-                    await interaction.response.send_message(
-                        f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
-                    )
-                    return
-                desk_index = desk - 1
-                desk_num = desk
-                if booking_day.desk(desk_index).booker:
-                    await interaction.response.send_message(
-                        f"Desk {desk} is already booked by {booking_day.desk(desk_index).booker} on {date_str}.",
-                        ephemeral=True,
-                    )
-                    return
-            else:
-                desk_index_option = booking_day.get_available_desk()
-                if desk_index_option is not None:
-                    desk_index = desk_index_option
-                    desk_num = desk_index + 1
-                else:
-                    await interaction.response.send_message(
-                        f"No more desks are available for booking on {date_str}.", ephemeral=True
-                    )
-                    return
-            try:
-                database.handle_event(
-                    Event(
-                        author=user_id,
-                        time=datetime.now(),
-                        event=BookDesk(date=booking_date, desk_index=desk_index, user=user_id),
-                    )
-                )
-                await interaction.response.send_message(
-                    f"Desk {desk_num} has been booked for {fmt.user(interaction, user_id)} on {date_str}."
-                )
-            except HandleEventError as e:
-                await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
-        except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
-            raise
+            )
+            await interaction.response.send_message(
+                f"Desk {desk_num} has been booked for {fmt.user(interaction, user_id)} on {date_str}."
+            )
+        except HandleEventError as e:
+            await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
         database.save(database_path)
 
     @bot.tree.command(name="unbook", description="Unbook a desk.", guilds=guilds)
@@ -193,70 +190,67 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         user: Member | None,
         desk: Range[int, 1] | None,
     ) -> None:
-        try:
-            handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
-            if handle_date_result is None:
-                return
-            booking_date, booking_day = handle_date_result
-            date_str = format_date(booking_date)
+        handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
+        if handle_date_result is None:
+            return
+        booking_date, booking_day = handle_date_result
+        date_str = format_date(booking_date)
 
-            if booking_date < date.today():
+        if booking_date < date.today():
+            await interaction.response.send_message(
+                f"Date {date_str} not available for booking. Desks cannot be unbooked in the past.", ephemeral=True
+            )
+            return
+
+        if desk is not None:
+            if desk < 1 or desk > len(booking_day.desks):
                 await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. Desks cannot be unbooked in the past.", ephemeral=True
+                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
                 )
                 return
-
-            if desk is not None:
-                if desk < 1 or desk > len(booking_day.desks):
+            desk_index = desk - 1
+            desk_num = desk
+            if user is not None:
+                if user.id != booking_day.desk(desk_index).booker:
                     await interaction.response.send_message(
-                        f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
-                    )
-                    return
-                desk_index = desk - 1
-                desk_num = desk
-            else:
-                if user:
-                    user_id = user.id
-                else:
-                    user_id = author_id(interaction)
-                desk_indices = booking_day.booked_desks(user_id)
-                if desk_indices:
-                    desk_index = desk_indices[0]
-                    desk_num = desk_index + 1
-                else:
-                    await interaction.response.send_message(
-                        f"{user_id} already has no desks booked for {date_str}.", ephemeral=True
-                    )
-                    return
-
-            try:
-                desk_owner = booking_day.desk(desk_index).owner
-                if user_id and user_id != desk_owner:
-                    await interaction.response.send_message(
-                        f"Desk {desk_num} is not booked by {fmt.user(interaction, user_id)} on {date_str}.",
+                        f"Desk {desk} is not booked by {fmt.user(interaction, user.id)} on {date_str}.",
                         ephemeral=True,
                     )
                     return
-                if desk_owner:
-                    database.handle_event(
-                        Event(
-                            author=user_id,
-                            time=datetime.now(),
-                            event=UnbookDesk(date=booking_date, desk_index=desk_index),
-                        )
+        else:
+            if user:
+                user_id = user.id
+            else:
+                user_id = author_id(interaction)
+            desk_indices = booking_day.booked_desks(user_id)
+            if desk_indices:
+                desk_index = desk_indices[0]
+                desk_num = desk_index + 1
+            else:
+                await interaction.response.send_message(
+                    f"{user_id} already has no desks booked for {date_str}.", ephemeral=True
+                )
+                return
+
+        try:
+            desk_booker = booking_day.desk(desk_index).booker
+            if desk_booker:
+                database.handle_event(
+                    Event(
+                        author=author_id(interaction),
+                        time=datetime.now(),
+                        event=UnbookDesk(date=booking_date, desk_index=desk_index),
                     )
-                    await interaction.response.send_message(
-                        f"Desk {desk_num} is no longer booked for {fmt.user(interaction, desk_owner)} on {date_str}."
-                    )
-                else:
-                    await interaction.response.send_message(
-                        f"Desk {desk_num} is already free on {date_str}.", ephemeral=True
-                    )
-            except HandleEventError as e:
-                await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
-        except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
-            raise
+                )
+                await interaction.response.send_message(
+                    f"Desk {desk_num} is no longer booked for {fmt.user(interaction, desk_booker)} on {date_str}."
+                )
+            else:
+                await interaction.response.send_message(
+                    f"Desk {desk_num} is already free on {date_str}.", ephemeral=True
+                )
+        except HandleEventError as e:
+            await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
         database.save(database_path)
 
     @bot.tree.command(
@@ -270,48 +264,44 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         user: Member | None,
         desk: Range[int, 1],
     ) -> None:
+        handle_date_result = await handle_date(database.state, interaction, start_date)
+        if handle_date_result is None:
+            return
+        booking_date, booking_day = handle_date_result
+        date_str = format_date(booking_date)
+
+        if booking_date < date.today():
+            await interaction.response.send_message(
+                f"Date {date_str} not available for booking. Desks cannot be made permanent retroactively.",
+                ephemeral=True,
+            )
+            return
+
+        if desk < 1 or desk > len(booking_day.desks):
+            await interaction.response.send_message(
+                f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
+            )
+            return
+
+        desk_index = desk - 1
+
+        if user:
+            user_id = user.id
+        else:
+            user_id = author_id(interaction)
         try:
-            handle_date_result = await handle_date(database.state, interaction, start_date)
-            if handle_date_result is None:
-                return
-            booking_date, booking_day = handle_date_result
-            date_str = format_date(booking_date)
-
-            if booking_date < date.today():
-                await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. Desks cannot be made permanent retroactively.",
-                    ephemeral=True,
+            database.handle_event(
+                Event(
+                    author=author_id(interaction),
+                    time=datetime.now(),
+                    event=MakeOwned(start_date=booking_date, desk_index=desk_index, user=user_id),
                 )
-                return
-
-            if desk < 1 or desk > len(booking_day.desks):
-                await interaction.response.send_message(
-                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
-                )
-                return
-
-            desk_index = desk - 1
-
-            if user:
-                user_id = user.id
-            else:
-                user_id = author_id(interaction)
-            try:
-                database.handle_event(
-                    Event(
-                        author=user_id,
-                        time=datetime.now(),
-                        event=MakeOwned(start_date=booking_date, desk_index=desk_index, user=user_id),
-                    )
-                )
-                await interaction.response.send_message(
-                    f"Desk {desk} is now owned by {fmt.user(interaction, user_id)} from {date_str} onwards."
-                )
-            except HandleEventError as e:
-                await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
-        except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
-            raise
+            )
+            await interaction.response.send_message(
+                f"Desk {desk} is now owned by {fmt.user(interaction, user_id)} from {date_str} onwards."
+            )
+        except HandleEventError as e:
+            await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
         database.save(database_path)
 
     @bot.tree.command(
@@ -322,42 +312,38 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     async def makeflex(
         interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: Range[int, 1]
     ) -> None:
+        handle_date_result = await handle_date(database.state, interaction, start_date)
+        if handle_date_result is None:
+            return
+        booking_date, booking_day = handle_date_result
+        date_str = format_date(booking_date)
+
+        if booking_date < date.today():
+            await interaction.response.send_message(
+                f"Date {date_str} not available for booking. You cannot make a desk permanent retroactively.",
+                ephemeral=True,
+            )
+            return
+
+        if desk < 1 or desk > len(booking_day.desks):
+            await interaction.response.send_message(
+                f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
+            )
+            return
+
+        desk_index = desk - 1
+
         try:
-            handle_date_result = await handle_date(database.state, interaction, start_date)
-            if handle_date_result is None:
-                return
-            booking_date, booking_day = handle_date_result
-            date_str = format_date(booking_date)
-
-            if booking_date < date.today():
-                await interaction.response.send_message(
-                    f"Date {date_str} not available for booking. You cannot make a desk permanent retroactively.",
-                    ephemeral=True,
+            database.handle_event(
+                Event(
+                    author=author_id(interaction),
+                    time=datetime.now(),
+                    event=MakeFlex(start_date=booking_date, desk_index=desk_index),
                 )
-                return
-
-            if desk < 1 or desk > len(booking_day.desks):
-                await interaction.response.send_message(
-                    f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.", ephemeral=True
-                )
-                return
-
-            desk_index = desk - 1
-
-            try:
-                database.handle_event(
-                    Event(
-                        author=author_id(interaction),
-                        time=datetime.now(),
-                        event=MakeFlex(start_date=booking_date, desk_index=desk_index),
-                    )
-                )
-                await interaction.response.send_message(f"Desk {desk} is now a flex desk from {date_str} onwards.")
-            except HandleEventError as e:
-                await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
-        except Exception:
-            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
-            raise
+            )
+            await interaction.response.send_message(f"Desk {desk} is now a flex desk from {date_str} onwards.")
+        except HandleEventError as e:
+            await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
         database.save(database_path)
 
     @bot.command()
@@ -384,6 +370,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         if isinstance(error, discord.app_commands.errors.MissingRole):
             await interaction.response.send_message("You do not have permission to run this command.", ephemeral=True)
             return
-        raise error
+        else:
+            await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
+            return
 
     return bot

@@ -1,3 +1,4 @@
 ruff ~= 0.6.5
 mypy ~= 1.11.2
 pre-commit ~= 3.9.0
+types-python-dateutil~=2.9.0

@@ -12,7 +12,7 @@ from discord.ext.commands import Bot, Context
 
 from eadk_discord import fmt
 from eadk_discord.database import Database
-from eadk_discord.date_converter import DateConverter
+from eadk_discord.date_converter import DateConverter, DateParseError
 from eadk_discord.event import BookDesk, Event, MakeFlex, MakeOwned, SetNumDesks, UnbookDesk
 from eadk_discord.state import Day, HandleEventError, State
 
@@ -27,7 +27,7 @@ def format_date(date: date) -> str:
     return date.isoformat()
 
 
-def get_booking_date(booking_date_arg: date | str | None) -> date | str:
+def get_booking_date(booking_date_arg: date | None) -> date:
     """
     Returns a tuple of two values:
     - A boolean indicating whether it is currently before 17:00.
@@ -41,12 +41,9 @@ def get_booking_date(booking_date_arg: date | str | None) -> date | str:
 
 
 async def handle_date(
-    database: State, interaction: Interaction, booking_date_arg: date | str | None
+    database: State, interaction: Interaction, booking_date_arg: date | None
 ) -> tuple[date, Day] | None:
     booking_date = get_booking_date(booking_date_arg)
-    if isinstance(booking_date, str):
-        await interaction.response.send_message(booking_date)
-        return None
     if booking_date < database.start_date:
         await interaction.response.send_message(
             f"Date {format_date(booking_date)} is not in the database. "
@@ -94,7 +91,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.check(channel_check)
     async def info(
         interaction: Interaction,
-        booking_date_arg: Transform[date | str, DateConverter] | None,
+        booking_date_arg: Transform[date, DateConverter] | None,
     ) -> None:
         handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
         if handle_date_result is None:
@@ -125,7 +122,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID, EADK_DESK_REGULAR_ID)
     async def book(
         interaction: Interaction,
-        booking_date_arg: Transform[date | str, DateConverter] | None,
+        booking_date_arg: Transform[date, DateConverter] | None,
         user: Member | None,
         desk: Range[int, 1] | None,
     ) -> None:
@@ -154,12 +151,6 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 return
             desk_index = desk - 1
             desk_num = desk
-            if booking_day.desk(desk_index).booker:
-                await interaction.response.send_message(
-                    f"Desk {desk} is already booked by {booking_day.desk(desk_index).booker} on {date_str}.",
-                    ephemeral=True,
-                )
-                return
         else:
             desk_index_option = booking_day.get_available_desk()
             if desk_index_option is not None:
@@ -170,19 +161,16 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                     f"No more desks are available for booking on {date_str}.", ephemeral=True
                 )
                 return
-        try:
-            database.handle_event(
-                Event(
-                    author=author_id(interaction),
-                    time=datetime.now(),
-                    event=BookDesk(date=booking_date, desk_index=desk_index, user=user_id),
-                )
+        database.handle_event(
+            Event(
+                author=author_id(interaction),
+                time=datetime.now(),
+                event=BookDesk(date=booking_date, desk_index=desk_index, user=user_id),
             )
-            await interaction.response.send_message(
-                f"Desk {desk_num} has been booked for {fmt.user(interaction, user_id)} on {date_str}."
-            )
-        except HandleEventError as e:
-            await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
+        )
+        await interaction.response.send_message(
+            f"Desk {desk_num} has been booked for {fmt.user(interaction, user_id)} on {date_str}."
+        )
         database.save(database_path)
 
     @bot.tree.command(name="unbook", description="Unbook a desk.", guilds=guilds)
@@ -193,7 +181,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID, EADK_DESK_REGULAR_ID)
     async def unbook(
         interaction: Interaction,
-        booking_date_arg: Transform[date | str, DateConverter] | None,
+        booking_date_arg: Transform[date, DateConverter] | None,
         user: Member | None,
         desk: Range[int, 1] | None,
     ) -> None:
@@ -235,29 +223,24 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 desk_num = desk_index + 1
             else:
                 await interaction.response.send_message(
-                    f"{user_id} already has no desks booked for {date_str}.", ephemeral=True
+                    f"{fmt.user(interaction, user_id)} already has no desks booked for {date_str}.", ephemeral=True
                 )
                 return
 
-        try:
-            desk_booker = booking_day.desk(desk_index).booker
-            if desk_booker:
-                database.handle_event(
-                    Event(
-                        author=author_id(interaction),
-                        time=datetime.now(),
-                        event=UnbookDesk(date=booking_date, desk_index=desk_index),
-                    )
+        desk_booker = booking_day.desk(desk_index).booker
+        if desk_booker:
+            database.handle_event(
+                Event(
+                    author=author_id(interaction),
+                    time=datetime.now(),
+                    event=UnbookDesk(date=booking_date, desk_index=desk_index),
                 )
-                await interaction.response.send_message(
-                    f"Desk {desk_num} is no longer booked for {fmt.user(interaction, desk_booker)} on {date_str}."
-                )
-            else:
-                await interaction.response.send_message(
-                    f"Desk {desk_num} is already free on {date_str}.", ephemeral=True
-                )
-        except HandleEventError as e:
-            await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
+            )
+            await interaction.response.send_message(
+                f"Desk {desk_num} is no longer booked for {fmt.user(interaction, desk_booker)} on {date_str}."
+            )
+        else:
+            await interaction.response.send_message(f"Desk {desk_num} is already free on {date_str}.", ephemeral=True)
         database.save(database_path)
 
     @bot.tree.command(
@@ -269,7 +252,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID)
     async def makeowned(
         interaction: Interaction,
-        start_date: Transform[date | str, DateConverter],
+        start_date: Transform[date, DateConverter],
         user: Member | None,
         desk: Range[int, 1],
     ) -> None:
@@ -298,19 +281,16 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
             user_id = user.id
         else:
             user_id = author_id(interaction)
-        try:
-            database.handle_event(
-                Event(
-                    author=author_id(interaction),
-                    time=datetime.now(),
-                    event=MakeOwned(start_date=booking_date, desk_index=desk_index, user=user_id),
-                )
+        database.handle_event(
+            Event(
+                author=author_id(interaction),
+                time=datetime.now(),
+                event=MakeOwned(start_date=booking_date, desk_index=desk_index, user=user_id),
             )
-            await interaction.response.send_message(
-                f"Desk {desk} is now owned by {fmt.user(interaction, user_id)} from {date_str} onwards."
-            )
-        except HandleEventError as e:
-            await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
+        )
+        await interaction.response.send_message(
+            f"Desk {desk} is now owned by {fmt.user(interaction, user_id)} from {date_str} onwards."
+        )
         database.save(database_path)
 
     @bot.tree.command(
@@ -321,7 +301,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     @app_commands.check(channel_check)
     @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID)
     async def makeflex(
-        interaction: Interaction, start_date: Transform[date | str, DateConverter], desk: Range[int, 1]
+        interaction: Interaction, start_date: Transform[date, DateConverter], desk: Range[int, 1]
     ) -> None:
         handle_date_result = await handle_date(database.state, interaction, start_date)
         if handle_date_result is None:
@@ -344,17 +324,14 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
         desk_index = desk - 1
 
-        try:
-            database.handle_event(
-                Event(
-                    author=author_id(interaction),
-                    time=datetime.now(),
-                    event=MakeFlex(start_date=booking_date, desk_index=desk_index),
-                )
+        database.handle_event(
+            Event(
+                author=author_id(interaction),
+                time=datetime.now(),
+                event=MakeFlex(start_date=booking_date, desk_index=desk_index),
             )
-            await interaction.response.send_message(f"Desk {desk} is now a flex desk from {date_str} onwards.")
-        except HandleEventError as e:
-            await interaction.response.send_message(e.message(lambda id: fmt.user(interaction, id)))
+        )
+        await interaction.response.send_message(f"Desk {desk} is now a flex desk from {date_str} onwards.")
         database.save(database_path)
 
     @bot.command()
@@ -378,7 +355,6 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
     @bot.tree.error
     async def on_error(interaction: Interaction, error: AppCommandError) -> None:
-        print(type(error))
         if isinstance(error, discord.app_commands.errors.MissingAnyRole) or isinstance(
             error, discord.app_commands.errors.MissingRole
         ):
@@ -389,8 +365,24 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
                 "This command can only be used in the office channel.", ephemeral=True
             )
             return
+        if isinstance(error, discord.app_commands.errors.TransformerError):
+            match error.__cause__:
+                case DateParseError(arg):
+                    await interaction.response.send_message(
+                        f"Date {arg} could not be parsed. "
+                        "Please use the format YYYY-MM-DD, 'today', 'tomorrow', or specify a weekday.",
+                        ephemeral=True,
+                    )
+                    return
+        if isinstance(error, discord.app_commands.errors.CommandInvokeError):
+            match error.__cause__:
+                case HandleEventError(_event, event_error):
+                    await interaction.response.send_message(
+                        event_error.message(lambda id: fmt.user(interaction, id)), ephemeral=True
+                    )
+                    return
         else:
             await interaction.response.send_message("INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True)
-            return
+            raise error
 
     return bot

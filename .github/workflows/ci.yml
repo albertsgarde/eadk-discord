@@ -23,7 +23,7 @@ jobs:
               uses: harupy/find-trailing-whitespace@v1.0
 
             - name: Validate YAML files
-              run: yamllint .
+              run: yamllint . --strict
 
             - name: Ruff
               uses: chartboost/ruff-action@v1

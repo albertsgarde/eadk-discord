@@ -28,7 +28,7 @@ jobs:
             - name: Ruff
               uses: chartboost/ruff-action@v1
               with:
-                  src: mechint
+                  src: eadk_discord
 
             - name: Mypy
               uses: jashparekh/mypy-action@v2

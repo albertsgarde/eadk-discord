@@ -14,7 +14,7 @@ from eadk_discord import fmt
 from eadk_discord.database import Database
 from eadk_discord.date_converter import DateConverter, DateParseError
 from eadk_discord.event import BookDesk, Event, MakeFlex, MakeOwned, SetNumDesks, UnbookDesk
-from eadk_discord.state import Day, HandleEventError, State
+from eadk_discord.state import HandleEventError
 
 TIME_ZONE = ZoneInfo("Europe/Copenhagen")
 
@@ -38,20 +38,6 @@ def get_booking_date(booking_date_arg: date | None) -> date:
     now = datetime.now(TIME_ZONE)
     booking_date = now.date() if now.hour < 17 else now.date() + timedelta(days=1)
     return booking_date
-
-
-async def handle_date(
-    database: State, interaction: Interaction, booking_date_arg: date | None
-) -> tuple[date, Day] | None:
-    booking_date = get_booking_date(booking_date_arg)
-    if booking_date < database.start_date:
-        await interaction.response.send_message(
-            f"Date {format_date(booking_date)} is not in the database. "
-            f"The database starts at {format_date(database.start_date)}."
-        )
-        return None
-    booking_day, _ = database.day(booking_date)
-    return booking_date, booking_day
 
 
 def author_id(interaction: Interaction) -> int:
@@ -93,10 +79,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         interaction: Interaction,
         booking_date_arg: Transform[date, DateConverter] | None,
     ) -> None:
-        handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
-        if handle_date_result is None:
-            return
-        booking_date, booking_day = handle_date_result
+        booking_date = get_booking_date(booking_date_arg)
+        booking_day, _ = database.state.day(booking_date)
 
         desk_numbers_str = "\n".join(str(i + 1) for i in range(len(booking_day.desks)))
         desk_bookers_str = "\n".join(
@@ -126,10 +110,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         user: Member | None,
         desk: Range[int, 1] | None,
     ) -> None:
-        handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
-        if handle_date_result is None:
-            return
-        booking_date, booking_day = handle_date_result
+        booking_date = get_booking_date(booking_date_arg)
+        booking_day, _ = database.state.day(booking_date)
         date_str = format_date(booking_date)
 
         if booking_date < date.today():
@@ -185,10 +167,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         user: Member | None,
         desk: Range[int, 1] | None,
     ) -> None:
-        handle_date_result = await handle_date(database.state, interaction, booking_date_arg)
-        if handle_date_result is None:
-            return
-        booking_date, booking_day = handle_date_result
+        booking_date = get_booking_date(booking_date_arg)
+        booking_day, _ = database.state.day(booking_date)
         date_str = format_date(booking_date)
 
         if booking_date < date.today():
@@ -256,10 +236,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         user: Member | None,
         desk: Range[int, 1],
     ) -> None:
-        handle_date_result = await handle_date(database.state, interaction, start_date)
-        if handle_date_result is None:
-            return
-        booking_date, booking_day = handle_date_result
+        booking_date = get_booking_date(start_date)
+        booking_day, _ = database.state.day(booking_date)
         date_str = format_date(booking_date)
 
         if booking_date < date.today():
@@ -303,10 +281,8 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     async def makeflex(
         interaction: Interaction, start_date: Transform[date, DateConverter], desk: Range[int, 1]
     ) -> None:
-        handle_date_result = await handle_date(database.state, interaction, start_date)
-        if handle_date_result is None:
-            return
-        booking_date, booking_day = handle_date_result
+        booking_date = get_booking_date(start_date)
+        booking_day, _ = database.state.day(booking_date)
         date_str = format_date(booking_date)
 
         if booking_date < date.today():

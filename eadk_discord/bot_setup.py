@@ -54,9 +54,6 @@ async def handle_date(
         )
         return None
     booking_day, _ = database.day(booking_date)
-    if booking_day is None:
-        await interaction.response.send_message(f"Date {format_date(booking_date)} is too far in the future.")
-        return None
     return booking_date, booking_day
 
 
@@ -376,7 +373,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         logging.info(f"Synced {synced_commands} commands globally")
 
     @bot.event
-    async def on_ready():
+    async def on_ready() -> None:
         logging.info(f"We have logged in as {bot.user}")
 
     @bot.tree.error

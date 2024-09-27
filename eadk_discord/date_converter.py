@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 from discord import Interaction
@@ -14,7 +15,12 @@ WEEKDAYS = [
 ]
 
 
-def parse_date_arg(argument: str, today: date) -> date | str:
+@dataclass
+class DateParseError(Exception):
+    argument: str
+
+
+def parse_date_arg(argument: str, today: date) -> date:
     if argument.lower() == "today":
         return today
     elif argument.lower() == "tomorrow":
@@ -27,10 +33,10 @@ def parse_date_arg(argument: str, today: date) -> date | str:
         try:
             return date.fromisoformat(argument)
         except Exception:
-            return "Could not parse date argument.\nPlease format the date as YYYY-MM-DD"
+            raise DateParseError(argument) from Exception
 
 
 class DateConverter(Transformer):
-    async def transform(self, interaction: Interaction, argument: str) -> date | str:
+    async def transform(self, interaction: Interaction, argument: str) -> date:
         today = date.today()
         return parse_date_arg(argument, today)

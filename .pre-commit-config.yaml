@@ -23,6 +23,12 @@ repos:
       hooks:
           - id: yamlfmt
 
+    - repo: https://github.com/adrienverge/yamllint
+      rev: v1.35.1
+      hooks:
+          - id: yamllint
+            args: [--strict]
+
     - repo: https://github.com/codespell-project/codespell
       rev: v2.3.0
       hooks:
@@ -31,16 +37,19 @@ repos:
                 - tomli
 
     - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
+      # Ruff version.
       rev: v0.1.13
       hooks:
-      # Run the linter.
+          # Run the linter.
           - id: ruff
-      # Run the formatter.
+          # Run the formatter.
           - id: ruff-format
 
     - repo: https://github.com/pre-commit/mirrors-mypy
       rev: v1.11.2
       hooks:
           - id: mypy
-            additional_dependencies: [types-python-dateutil~=2.9.0]
+            additional_dependencies:
+                - types-python-dateutil~=2.9.0
+                - discord.py~=2.4.0
+                - pydantic~=2.9.1

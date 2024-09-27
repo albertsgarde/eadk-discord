@@ -1,34 +1,33 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools", "setuptools-scm"]
 
 [project]
-name = "eadk_discord"
-version = "0.0.1"
+authors = [{name = "albertsgarde", email = "albertsgarde@gmail.com"}]
 description = "A Discord bot the EADK discord server"
-authors = [{ name = "albertsgarde", email = "albertsgarde@gmail.com" }]
-license = { file = "LICENSE" }
+dynamic = ["dependencies", "optional-dependencies"]
+license = {file = "LICENSE"}
+name = "eadk_discord"
 readme = "README.md"
 requires-python = ">=3.11"
-dynamic = ["dependencies", "optional-dependencies"]
-
-[tool.setuptools]
-packages = ["eadk_discord"]
-
-[tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
-
-[tool.setuptools.dynamic.optional-dependencies]
-dev = { file = ['requirements_dev.txt'] }
+version = "0.0.1"
 
 [tool.pytest.ini_options]
 pythonpath = ["eadk_discord"]
-
 
 [tool.ruff]
 line-length = 120
 
 [tool.ruff.lint]
-select = ["I", "E", "F", "W", "N", "B"]
 ignore = ["D203", "D213", "F722"]
+select = ["I", "E", "F", "W", "N", "B"]
 isort.known-first-party = ["eadk_discord"]
+
+[tool.setuptools]
+packages = ["eadk_discord"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.dynamic.optional-dependencies]
+dev = {file = ['requirements_dev.txt']}

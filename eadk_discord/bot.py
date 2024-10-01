@@ -83,11 +83,6 @@ class EADKBot:
         date_str = fmt.date(booking_date)
 
         if desk_arg:
-            if desk_arg < 1 or desk_arg > len(booking_day.desks):
-                return Response(
-                    message=f"Desk {desk_arg} does not exist. There are only {len(booking_day.desks)} desks.",
-                    ephemeral=True,
-                )
             desk_index = desk_arg - 1
             desk_num = desk_arg
         else:
@@ -118,11 +113,6 @@ class EADKBot:
             )
 
         if desk is not None:
-            if desk < 1 or desk > len(booking_day.desks):
-                return Response(
-                    message=f"Desk {desk} does not exist. There are only {len(booking_day.desks)} desks.",
-                    ephemeral=True,
-                )
             desk_index = desk - 1
             desk_num = desk
             if user_id is not None:

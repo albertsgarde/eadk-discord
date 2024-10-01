@@ -1,10 +1,15 @@
 import logging
+from datetime import date as Date  # noqa: N812
 
 from discord import Interaction
 
 
 def desk_index(index: int) -> str:
     return f"{index + 1}"
+
+
+def date(date: Date) -> str:
+    return date.isoformat()
 
 
 def user(interaction: Interaction, user: int) -> str:

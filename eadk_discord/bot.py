@@ -82,6 +82,12 @@ class EADKBot:
         booking_day, _ = self._database.state.day(booking_date)
         date_str = fmt.date(booking_date)
 
+        if booking_date < info.now.date():
+            return Response(
+                message=f"Date {date_str} not available for booking. Desks cannot be unbooked in the past.",
+                ephemeral=True,
+            )
+
         if desk_arg:
             desk_index = desk_arg - 1
             desk_num = desk_arg

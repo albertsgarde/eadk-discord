@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable
 from zoneinfo import ZoneInfo
 
 import discord
+from beartype.typing import Callable
 from discord.app_commands import AppCommandError
 from pydantic import BaseModel, Field
 

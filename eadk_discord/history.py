@@ -1,6 +1,6 @@
 from datetime import date as Date  # noqa: N812
-from typing import Any  # noqa: N812
 
+from beartype.typing import Any  # noqa: N812
 from pydantic import BaseModel, Field
 
 from .event import Event

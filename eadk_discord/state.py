@@ -2,8 +2,8 @@ import itertools
 from dataclasses import dataclass
 from datetime import date as Date  # noqa: N812
 from datetime import timedelta as TimeDelta  # noqa: N812
-from typing import Callable, Sequence  # noqa: N812
 
+from beartype.typing import Callable, Sequence  # noqa: N812
 from pydantic import BaseModel, Field
 
 from .event import BookDesk, Event, MakeFlex, MakeOwned, SetNumDesks, UnbookDesk
@@ -62,8 +62,8 @@ class DeskStatus(BaseModel):
 
 
 class Day(BaseModel):
-    date: Date = Field(serialization_alias="date")
-    desks: Sequence[DeskStatus] = Field(serialization_alias="desks")
+    date: Date = Field()
+    desks: Sequence[DeskStatus] = Field()
 
     @classmethod
     def create_unbooked(cls, date: Date, num_desks: int) -> "Day":
@@ -84,7 +84,8 @@ class Day(BaseModel):
             raise ValueError("desk number must be non-negative")
         elif desk >= len(self.desks):
             raise ValueError("desk number is out of range. There are only {len(self.desks)} desks.")
-        return self.desks[desk]
+        result: DeskStatus = self.desks[desk]
+        return result
 
     def get_available_desk(self) -> int | None:
         """

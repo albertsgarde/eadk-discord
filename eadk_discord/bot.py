@@ -1,17 +1,17 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import discord
 from beartype import beartype
-from beartype.typing import Callable
 from discord.app_commands import AppCommandError
 from pydantic import BaseModel, Field
 
 from eadk_discord import dates, fmt
 from eadk_discord.database import Database
-from eadk_discord.event import BookDesk, Event, MakeFlex, MakeOwned, UnbookDesk
-from eadk_discord.state import HandleEventError
+from eadk_discord.database.event import BookDesk, Event, MakeFlex, MakeOwned, UnbookDesk
+from eadk_discord.database.event_errors import HandleEventError
 
 TIME_ZONE = ZoneInfo("Europe/Copenhagen")
 

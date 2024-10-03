@@ -218,16 +218,10 @@ class EADKBot:
             return Response(message="You do not have permission to run this command.", ephemeral=True)
         if isinstance(error, discord.app_commands.errors.CheckFailure):
             return Response(message="This command can only be used in the office channel.", ephemeral=True)
-        if isinstance(error, discord.app_commands.errors.TransformerError):
-            match error.__cause__:
-                case dates.DateParseError(arg):
-                    return Response(
-                        message=f"Date {arg} could not be parsed. "
-                        "Please use the format YYYY-MM-DD, 'today', 'tomorrow', or specify a weekday.",
-                        ephemeral=True,
-                    )
         if isinstance(error, discord.app_commands.errors.CommandInvokeError):
             match error.__cause__:
                 case EventError() as event_error:
                     return Response(message=event_error.message(info.format_user), ephemeral=True)
+                case _:
+                    raise error
         raise error

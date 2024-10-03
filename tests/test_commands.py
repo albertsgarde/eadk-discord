@@ -11,17 +11,18 @@ NOW: datetime = datetime.fromisoformat("2024-09-14")  # Saturday
 TODAY: date = NOW.date()
 
 
-def setup() -> tuple[EADKBot, Database]:
+@pytest.fixture
+def bot() -> EADKBot:
     database = Database.initialize(TODAY)
     database.handle_event(Event(author=None, time=NOW, event=SetNumDesks(date=TODAY, num_desks=6)))
 
     bot = EADKBot(database)
 
-    return bot, database
+    return bot
 
 
-def test_book() -> None:
-    bot, database = setup()
+def test_book(bot: EADKBot) -> None:
+    database = bot.database
 
     response = bot.book(
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=3, desk_arg=2
@@ -31,9 +32,7 @@ def test_book() -> None:
     assert database.state.day(TODAY)[0].desk(1).booker == 3
 
 
-def test_book_too_early() -> None:
-    bot, _ = setup()
-
+def test_book_too_early(bot: EADKBot) -> None:
     with pytest.raises(DateTooEarlyError):
         bot.book(
             CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),

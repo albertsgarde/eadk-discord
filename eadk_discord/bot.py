@@ -212,16 +212,13 @@ class EADKBot:
 
     @beartype
     def handle_error(self, info: CommandInfo, error: AppCommandError) -> Response:
-        if isinstance(error, discord.app_commands.errors.MissingAnyRole) or isinstance(
-            error, discord.app_commands.errors.MissingRole
-        ):
-            return Response(message="You do not have permission to run this command.", ephemeral=True)
-        if isinstance(error, discord.app_commands.errors.CheckFailure):
-            return Response(message="This command can only be used in the office channel.", ephemeral=True)
-        if isinstance(error, discord.app_commands.errors.CommandInvokeError):
-            match error.__cause__:
-                case EventError() as event_error:
-                    return Response(message=event_error.message(info.format_user), ephemeral=True)
-                case _:
-                    raise error
+        match error:
+            case discord.app_commands.errors.MissingAnyRole() | discord.app_commands.errors.MissingRole():
+                return Response(message="You do not have permission to run this command.", ephemeral=True)
+            case discord.app_commands.errors.CheckFailure():
+                return Response(message="This command can only be used in the office channel.", ephemeral=True)
+            case discord.app_commands.errors.CommandInvokeError() as error:
+                match error.__cause__:
+                    case EventError() as event_error:
+                        return Response(message=event_error.message(info.format_user), ephemeral=True)
         raise error

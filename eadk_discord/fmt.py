@@ -1,3 +1,4 @@
+# pragma: coverage exclude file
 import logging
 from datetime import date as Date  # noqa: N812
 

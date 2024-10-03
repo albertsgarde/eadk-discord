@@ -1,3 +1,4 @@
+# pragma: coverage exclude file
 import logging
 import os
 from pathlib import Path

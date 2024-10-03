@@ -215,7 +215,7 @@ def test_book_too_early(bot: EADKBot) -> None:
         )
 
 
-def test_book_non_existant_desk(bot: EADKBot) -> None:
+def test_book_non_existent_desk(bot: EADKBot) -> None:
     with pytest.raises(NonExistentDeskError):
         bot.book(CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=0, desk_num=7)
     with pytest.raises(NonExistentDeskError):

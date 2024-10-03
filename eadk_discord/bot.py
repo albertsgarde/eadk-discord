@@ -85,7 +85,7 @@ class EADKBot:
         )
 
     @beartype
-    def book(self, info: CommandInfo, date_str: str | None, user_id: int | None, desk_arg: int | None) -> Response:
+    def book(self, info: CommandInfo, date_str: str | None, user_id: int | None, desk_num: int | None) -> Response:
         if user_id is None:
             user_id = info.author_id
 
@@ -99,9 +99,8 @@ class EADKBot:
                 ephemeral=True,
             )
 
-        if desk_arg is not None:
-            desk_index = desk_arg - 1
-            desk_num = desk_arg
+        if desk_num is not None:
+            desk_index = desk_num - 1
         else:
             desk_index_option = booking_day.get_available_desk()
             if desk_index_option is not None:
@@ -119,7 +118,7 @@ class EADKBot:
         return Response(message=f"Desk {desk_num} has been booked for {info.format_user(user_id)} on {date_str}.")
 
     @beartype
-    def unbook(self, info: CommandInfo, date_str: str | None, user_id: int | None, desk: int | None) -> Response:
+    def unbook(self, info: CommandInfo, date_str: str | None, user_id: int | None, desk_num: int | None) -> Response:
         booking_date = dates.get_booking_date(date_str, info.now)
         booking_day, _ = self._database.state.day(booking_date)
         date_str = fmt.date(booking_date)
@@ -130,13 +129,12 @@ class EADKBot:
                 ephemeral=True,
             )
 
-        if desk is not None:
-            desk_index = desk - 1
-            desk_num = desk
+        if desk_num is not None:
+            desk_index = desk_num - 1
             if user_id is not None:
                 if user_id != booking_day.desk(desk_index).booker:
                     return Response(
-                        message=f"Desk {desk} is not booked by {info.format_user(user_id)} on {date_str}.",
+                        message=f"Desk {desk_num} is not booked by {info.format_user(user_id)} on {date_str}.",
                         ephemeral=True,
                     )
         else:

@@ -16,7 +16,7 @@ def test_book(bot: EADKBot) -> None:
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
         date_str=None,
         user_id=None,
-        desk_arg=None,
+        desk_num=None,
     )
     assert response.ephemeral is False
     assert database.state.day(TODAY)[0].desk(0).booker == 1
@@ -28,7 +28,7 @@ def test_book_with_desk(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str=None, user_id=None, desk_arg=5
+        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str=None, user_id=None, desk_num=5
     )
     assert response.ephemeral is False
     assert database.state.day(TODAY)[0].desk(4).booker == 1
@@ -46,7 +46,7 @@ def test_book2(bot: EADKBot) -> None:
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
         date_str=None,
         user_id=None,
-        desk_arg=None,
+        desk_num=None,
     )
     assert response.ephemeral is False
     assert database.state.day(TODAY)[0].desk(0).booker == 0
@@ -59,7 +59,7 @@ def test_book_with_user(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str=None, user_id=7, desk_arg=None
+        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str=None, user_id=7, desk_num=None
     )
     assert response.ephemeral is False
     assert database.state.day(TODAY)[0].desk(0).booker == 7
@@ -71,7 +71,7 @@ def test_book_with_user_desk(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str=None, user_id=4, desk_arg=5
+        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str=None, user_id=4, desk_num=5
     )
     assert response.ephemeral is False
     assert database.state.day(TODAY)[0].desk(4).booker == 4
@@ -89,7 +89,7 @@ def test_book_with_date(bot: EADKBot) -> None:
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
         date_str="tomorrow",
         user_id=None,
-        desk_arg=None,
+        desk_num=None,
     )
     assert response.ephemeral is False
     assert database.state.day(tomorrow)[0].desk(0).booker == 1
@@ -108,7 +108,7 @@ def test_book_with_date_desk(bot: EADKBot) -> None:
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
         date_str="tomorrow",
         user_id=None,
-        desk_arg=3,
+        desk_num=3,
     )
     assert response.ephemeral is False
     assert database.state.day(tomorrow)[0].desk(2).booker == 1
@@ -127,7 +127,7 @@ def test_book_with_date_user(bot: EADKBot) -> None:
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
         date_str="tomorrow",
         user_id=8,
-        desk_arg=None,
+        desk_num=None,
     )
     assert response.ephemeral is False
     assert database.state.day(tomorrow)[0].desk(0).booker == 8
@@ -146,7 +146,7 @@ def test_book_weekday_same_week(bot: EADKBot) -> None:
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
         date_str="sunday",
         user_id=None,
-        desk_arg=None,
+        desk_num=None,
     )
 
     assert response.ephemeral is False
@@ -166,7 +166,7 @@ def test_book_weekday_next_week(bot: EADKBot) -> None:
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
         date_str="tuesday",
         user_id=None,
-        desk_arg=None,
+        desk_num=None,
     )
 
     assert response.ephemeral is False
@@ -186,7 +186,7 @@ def test_book_date(bot: EADKBot) -> None:
         CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
         date_str=date.isoformat(),
         user_id=None,
-        desk_arg=None,
+        desk_num=None,
     )
     assert response.ephemeral is False
     assert database.state.day(date)[0].desk(0).booker == 1
@@ -198,7 +198,7 @@ def test_book_with_date_user_desk(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str="today", user_id=3, desk_arg=2
+        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str="today", user_id=3, desk_num=2
     )
     assert response.ephemeral is False
     assert database.state.day(TODAY)[0].desk(0).booker is None
@@ -211,15 +211,15 @@ def test_book_too_early(bot: EADKBot) -> None:
             CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
             (TODAY - timedelta(1)).isoformat(),
             user_id=0,
-            desk_arg=1,
+            desk_num=1,
         )
 
 
 def test_book_non_existant_desk(bot: EADKBot) -> None:
     with pytest.raises(NonExistentDeskError):
-        bot.book(CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=0, desk_arg=7)
+        bot.book(CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=0, desk_num=7)
     with pytest.raises(NonExistentDeskError):
-        bot.book(CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=0, desk_arg=0)
+        bot.book(CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=0, desk_num=0)
 
 
 def test_book_already_booked(bot: EADKBot) -> None:
@@ -229,5 +229,5 @@ def test_book_already_booked(bot: EADKBot) -> None:
 
     with pytest.raises(DeskAlreadyBookedError):
         bot.book(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=None, desk_arg=1
+            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=None, desk_num=1
         )

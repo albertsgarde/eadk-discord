@@ -188,10 +188,10 @@ class State(BaseModel):
     def _book_desk(self, event: BookDesk) -> None:
         day, _ = self.day(event.date)
         desk_index = event.desk_index
-        if desk_index >= len(day.desks):
+        if desk_index >= len(day.desks) or desk_index < 0:
             raise NonExistentDeskError(desk=desk_index, num_desks=len(day.desks), day=event.date)
         desk = day.desks[desk_index]
-        if desk.booker:
+        if desk.booker is not None:
             raise DeskAlreadyBookedError(booker=desk.booker, desk=desk_index, day=event.date)
         desk.booker = event.user
 

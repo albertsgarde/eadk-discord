@@ -6,29 +6,29 @@ from pydantic import BaseModel, Field
 
 class SetNumDesks(BaseModel):
     date: Date = Field()
-    num_desks: int = Field(ge=0)
+    num_desks: int = Field()
 
 
 class BookDesk(BaseModel):
     date: Date = Field()
-    desk_index: int = Field(ge=0)
+    desk_index: int = Field()
     user: int = Field()
 
 
 class UnbookDesk(BaseModel):
     date: Date = Field()
-    desk_index: int = Field(ge=0)
+    desk_index: int = Field()
 
 
 class MakeOwned(BaseModel):
     start_date: Date = Field()
-    desk_index: int = Field(ge=0)
+    desk_index: int = Field()
     user: int = Field()
 
 
 class MakeFlex(BaseModel):
     start_date: Date = Field()
-    desk_index: int = Field(ge=0)
+    desk_index: int = Field()
 
 
 class Event(BaseModel):

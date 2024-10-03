@@ -209,7 +209,7 @@ def test_book_too_early(bot: EADKBot) -> None:
     with pytest.raises(DateTooEarlyError):
         bot.book(
             CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
-            (TODAY - timedelta(1)).isoformat(),
+            date_str=(TODAY - timedelta(1)).isoformat(),
             user_id=0,
             desk_num=1,
         )
@@ -217,9 +217,19 @@ def test_book_too_early(bot: EADKBot) -> None:
 
 def test_book_non_existent_desk(bot: EADKBot) -> None:
     with pytest.raises(NonExistentDeskError):
-        bot.book(CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=0, desk_num=7)
+        bot.book(
+            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            date_str="today",
+            user_id=0,
+            desk_num=7,
+        )
     with pytest.raises(NonExistentDeskError):
-        bot.book(CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=0, desk_num=0)
+        bot.book(
+            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            date_str="today",
+            user_id=0,
+            desk_num=0,
+        )
 
 
 def test_book_already_booked(bot: EADKBot) -> None:
@@ -229,5 +239,8 @@ def test_book_already_booked(bot: EADKBot) -> None:
 
     with pytest.raises(DeskAlreadyBookedError):
         bot.book(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), "today", user_id=None, desk_num=1
+            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            date_str="today",
+            user_id=None,
+            desk_num=1,
         )

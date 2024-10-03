@@ -5,7 +5,7 @@ from pathlib import Path
 import discord
 from discord.abc import Snowflake
 
-from . import bot_setup
+from eadk_discord import bot_setup
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)

@@ -1,26 +1,12 @@
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from itertools import chain
 
 import pytest
+from conftest import NOW, TODAY
 
 from eadk_discord.bot import CommandInfo, EADKBot
-from eadk_discord.database import Database
-from eadk_discord.database.event import Event, SetNumDesks
 from eadk_discord.database.event_errors import DeskAlreadyBookedError, NonExistentDeskError
 from eadk_discord.database.state import DateTooEarlyError
-
-NOW: datetime = datetime.fromisoformat("2024-09-13")  # Friday
-TODAY: date = NOW.date()
-
-
-@pytest.fixture
-def bot() -> EADKBot:
-    database = Database.initialize(TODAY)
-    database.handle_event(Event(author=None, time=NOW, event=SetNumDesks(date=TODAY, num_desks=6)))
-
-    bot = EADKBot(database)
-
-    return bot
 
 
 def test_book(bot: EADKBot) -> None:

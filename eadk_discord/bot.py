@@ -150,7 +150,7 @@ class EADKBot:
                 )
 
         desk_booker = booking_day.desk(desk_index).booker
-        if desk_booker:
+        if desk_booker is not None:
             self._database.handle_event(
                 Event(
                     author=info.author_id,

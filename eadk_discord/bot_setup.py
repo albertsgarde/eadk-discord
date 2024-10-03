@@ -3,6 +3,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import discord
+from beartype import beartype
 from discord import Intents, Interaction, Member, app_commands
 from discord.abc import Snowflake
 from discord.app_commands import AppCommandError, Choice, Range
@@ -33,6 +34,7 @@ async def channel_check(interaction: Interaction[discord.Client]) -> bool:
     return interaction.channel_id == test_server_channel_id or interaction.channel_id == eadk_office_channel_id
 
 
+@beartype
 def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
     if database_path.exists():
         database = Database.load(database_path)

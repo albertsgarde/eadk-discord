@@ -1,5 +1,6 @@
 from datetime import date as Date  # noqa: N812
 
+from beartype import beartype
 from beartype.typing import Any  # noqa: N812
 from pydantic import BaseModel, Field
 
@@ -20,13 +21,16 @@ class History(BaseModel):
     def to_json(self) -> str:
         return self.model_dump_json()
 
+    @beartype
     @staticmethod
     def from_json(data: str) -> "History":
         return History.model_validate_json(data)
 
+    @beartype
     @staticmethod
     def from_dict(data: dict[Any, Any]) -> "History":
         return History.model_validate(data)
 
+    @beartype
     def append(self, event: Event) -> None:
         self.history.append(event)

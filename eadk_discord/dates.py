@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
+from beartype import beartype
+
 WEEKDAYS = [
     "monday",
     "tuesday",
@@ -17,6 +19,7 @@ class DateParseError(Exception):
     argument: str
 
 
+@beartype
 def parse_date_arg(argument: str, today: date) -> date:
     if argument.lower() == "today":
         return today
@@ -33,6 +36,7 @@ def parse_date_arg(argument: str, today: date) -> date:
             raise DateParseError(argument) from Exception
 
 
+@beartype
 def get_booking_date(booking_date_arg: str | None, now: datetime) -> date:
     """
     Returns a tuple of two values:

@@ -199,7 +199,7 @@ class State(BaseModel):
     def _unbook_desk(self, event: UnbookDesk) -> None:
         day, _ = self.day(event.date)
         desk_index = event.desk_index
-        if desk_index >= len(day.desks):
+        if desk_index >= len(day.desks) or desk_index < 0:
             raise NonExistentDeskError(desk=desk_index, num_desks=len(day.desks), day=event.date)
         desk = day.desks[desk_index]
         if not desk.booker:
@@ -210,7 +210,7 @@ class State(BaseModel):
     def _make_owned(self, event: MakeOwned) -> None:
         day, day_index = self.day(event.start_date)
         desk_index = event.desk_index
-        if desk_index >= len(day.desks):
+        if desk_index >= len(day.desks) or desk_index < 0:
             raise NonExistentDeskError(desk=desk_index, num_desks=len(day.desks), day=event.start_date)
         for day in self.days[day_index:]:
             if desk_index >= len(day.desks):
@@ -227,7 +227,7 @@ class State(BaseModel):
     def _make_flex(self, event: MakeFlex) -> None:
         day, day_index = self.day(event.start_date)
         desk_index = event.desk_index
-        if desk_index >= len(day.desks):
+        if desk_index >= len(day.desks) or desk_index < 0:
             raise NonExistentDeskError(desk=desk_index, num_desks=len(day.desks), day=event.start_date)
         if day.desks[desk_index].owner is None:
             raise DeskNotOwnedError(desk=desk_index, day=event.start_date)

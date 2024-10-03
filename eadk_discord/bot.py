@@ -58,6 +58,7 @@ class EADKBot:
     def __init__(self, database: Database) -> None:
         self._database = database
 
+    @beartype
     def info(self, info: CommandInfo, date_str: str | None) -> Response:
         booking_date = dates.get_booking_date(date_str, info.now)
         booking_day, _ = self._database.state.day(booking_date)

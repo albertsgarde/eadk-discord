@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import date as Date  # noqa: N812
 from datetime import timedelta as TimeDelta  # noqa: N812
 
+from beartype import beartype
 from beartype.typing import Callable, Sequence  # noqa: N812
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,7 @@ class DeskStatus(BaseModel):
     booker: int | None = Field(serialization_alias="booker")
     owner: int | None = Field(serialization_alias="owner")
 
+    @beartype
     def _book(self, user: int) -> bool:
         """
         Returns True if the desk was successfully booked, False if the desk was already booked.
@@ -26,6 +28,7 @@ class DeskStatus(BaseModel):
             self.booker = user
             return True
 
+    @beartype
     def _unbook(self) -> bool:
         """
         Returns True if the desk was successfully unbooked, False if the desk was not booked.
@@ -36,6 +39,7 @@ class DeskStatus(BaseModel):
         else:
             return False
 
+    @beartype
     def _make_owned(self, user: int) -> bool:
         """
         Returns True if the desk was successfully permanently booked, False if the desk was already permanently booked.
@@ -48,6 +52,7 @@ class DeskStatus(BaseModel):
             self.owner = user
             return True
 
+    @beartype
     def _make_flex(self) -> bool:
         """
         Returns True if the desk was successfully unpermanently booked, False if the desk was not permanently booked.
@@ -65,10 +70,12 @@ class Day(BaseModel):
     date: Date = Field()
     desks: Sequence[DeskStatus] = Field()
 
+    @beartype
     @classmethod
     def create_unbooked(cls, date: Date, num_desks: int) -> "Day":
         return cls(date=date, desks=[DeskStatus(booker=None, owner=None) for _ in range(num_desks)])
 
+    @beartype
     @classmethod
     def create_from_previous(cls, previous: "Day") -> "Day":
         return cls(
@@ -76,6 +83,7 @@ class Day(BaseModel):
             desks=[DeskStatus(booker=desk.owner, owner=desk.owner) for desk in previous.desks],
         )
 
+    @beartype
     def desk(self, desk: int) -> DeskStatus:
         """
         Returns the DeskStatus object for the given desk.
@@ -87,6 +95,7 @@ class Day(BaseModel):
         result: DeskStatus = self.desks[desk]
         return result
 
+    @beartype
     def get_available_desk(self) -> int | None:
         """
         Returns the first available desk, or None if all desks are booked.
@@ -96,12 +105,14 @@ class Day(BaseModel):
                 return i
         return None
 
+    @beartype
     def available_desks(self) -> list[int]:
         """
         Returns a list of indices of available desks.
         """
         return [i for i, desk in enumerate(self.desks) if desk.booker is None]
 
+    @beartype
     def booked_desks(self, member: int) -> list[int]:
         """
         Returns the index of the desk booked by the given member, or None if the member has not booked a desk.
@@ -239,6 +250,7 @@ class State(BaseModel):
     start_date: Date = Field(serialization_alias="start_date")
     days: list[Day] = Field(serialization_alias="days")
 
+    @beartype
     @staticmethod
     def initialize(history: History) -> "State":
         state = State(start_date=history.start_date, days=[Day.create_unbooked(history.start_date, 0)])
@@ -246,6 +258,7 @@ class State(BaseModel):
             state.handle_event(event)
         return state
 
+    @beartype
     def day(self, date: Date) -> tuple[Day, int]:
         """
         Returns the Day object for the given date, or None if the date is not in the database.
@@ -257,6 +270,7 @@ class State(BaseModel):
             self.days.append(Day.create_from_previous(self.days[-1]))
         return self.days[day_index], day_index
 
+    @beartype
     def handle_event(self, event: Event) -> None:
         try:
             match event.event:
@@ -273,6 +287,7 @@ class State(BaseModel):
         except EventError as e:
             raise HandleEventError(event=event, error=e) from e
 
+    @beartype
     def _set_num_desks(self, event: SetNumDesks) -> None:
         _, day_index = self.day(event.date)
         for day in self.days[day_index:]:
@@ -291,6 +306,7 @@ class State(BaseModel):
         for day in self.days[day_index:]:
             day.desks = day.desks[: event.num_desks]
 
+    @beartype
     def _book_desk(self, event: BookDesk) -> None:
         day, _ = self.day(event.date)
         desk_index = event.desk_index
@@ -301,6 +317,7 @@ class State(BaseModel):
             raise DeskAlreadyBookedError(booker=desk.booker, desk=desk_index, day=event.date)
         desk.booker = event.user
 
+    @beartype
     def _unbook_desk(self, event: UnbookDesk) -> None:
         day, _ = self.day(event.date)
         desk_index = event.desk_index
@@ -311,6 +328,7 @@ class State(BaseModel):
             raise DeskNotBookedError(desk=desk_index, day=event.date)
         desk.booker = None
 
+    @beartype
     def _make_owned(self, event: MakeOwned) -> None:
         day, day_index = self.day(event.start_date)
         desk_index = event.desk_index
@@ -327,6 +345,7 @@ class State(BaseModel):
                 break
             day.desks[desk_index]._make_owned(event.user)
 
+    @beartype
     def _make_flex(self, event: MakeFlex) -> None:
         day, day_index = self.day(event.start_date)
         desk_index = event.desk_index

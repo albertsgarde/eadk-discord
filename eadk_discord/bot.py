@@ -3,6 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import discord
+from beartype import beartype
 from beartype.typing import Callable
 from discord.app_commands import AppCommandError
 from pydantic import BaseModel, Field
@@ -20,6 +21,7 @@ class CommandInfo(BaseModel):
     format_user: Callable[[int], str] = Field()
     author_id: int = Field()
 
+    @beartype
     @staticmethod
     def from_interaction(interaction: discord.Interaction) -> "CommandInfo":
         return CommandInfo(
@@ -35,11 +37,13 @@ class Response:
     ephemeral: bool
     embed: discord.Embed | None
 
+    @beartype
     def __init__(self, message: str = "", ephemeral: bool = False, embed: discord.Embed | None = None) -> None:
         self.message = message
         self.ephemeral = ephemeral
         self.embed = embed
 
+    @beartype
     async def send(self, interaction: discord.Interaction) -> None:
         if self.embed is None:
             await interaction.response.send_message(self.message, ephemeral=self.ephemeral)
@@ -50,6 +54,7 @@ class Response:
 class EADKBot:
     _database: Database
 
+    @beartype
     def __init__(self, database: Database) -> None:
         self._database = database
 
@@ -74,6 +79,7 @@ class EADKBot:
             .add_field(name="Owner", value=desk_owners_str, inline=True),
         )
 
+    @beartype
     def book(self, info: CommandInfo, date_str: str | None, user_id: int | None, desk_arg: int | None) -> Response:
         if user_id is None:
             user_id = info.author_id
@@ -107,6 +113,7 @@ class EADKBot:
         )
         return Response(message=f"Desk {desk_num} has been booked for {info.format_user(user_id)} on {date_str}.")
 
+    @beartype
     def unbook(self, info: CommandInfo, date_str: str | None, user_id: int | None, desk: int | None) -> Response:
         booking_date = dates.get_booking_date(date_str, info.now)
         booking_day, _ = self._database.state.day(booking_date)
@@ -154,6 +161,7 @@ class EADKBot:
         else:
             return Response(message=f"Desk {desk_num} is already free on {date_str}.", ephemeral=True)
 
+    @beartype
     def makeowned(self, info: CommandInfo, start_date_str: str, user_id: int | None, desk_num: int) -> Response:
         booking_date = dates.get_booking_date(start_date_str, info.now)
         date_str = fmt.date(booking_date)
@@ -177,6 +185,7 @@ class EADKBot:
         )
         return Response(message=f"Desk {desk_num} is now owned by {info.format_user(user_id)} from {date_str} onwards.")
 
+    @beartype
     def makeflex(self, info: CommandInfo, start_date_str: str, desk_num: int) -> Response:
         booking_date = dates.get_booking_date(start_date_str, info.now)
         date_str = fmt.date(booking_date)
@@ -198,6 +207,7 @@ class EADKBot:
         )
         return Response(message=f"Desk {desk_num} is now a flex desk from {date_str} onwards.")
 
+    @beartype
     def handle_error(self, info: CommandInfo, error: AppCommandError) -> Response:
         if isinstance(error, discord.app_commands.errors.MissingAnyRole) or isinstance(
             error, discord.app_commands.errors.MissingRole

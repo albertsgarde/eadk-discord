@@ -2,21 +2,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date as Date  # noqa: N812
 
-from eadk_discord.database.event import Event
-
 
 class EventError(Exception):
     def message(self, format_user: Callable[[int], str]) -> str:
         raise NotImplementedError()
-
-
-@dataclass
-class HandleEventError(Exception):
-    event: Event
-    error: EventError
-
-    def message(self, format_user: Callable[[int], str]) -> str:
-        return self.error.message(format_user)
 
 
 @dataclass

@@ -21,6 +21,7 @@ version = "0.0.1"
 exclude_also = [
   "\\A(?s:.*# pragma: coverage exclude file.*)\\Z"
 ]
+skip_covered = true
 
 [tool.mypy]
 disallow_untyped_defs = true

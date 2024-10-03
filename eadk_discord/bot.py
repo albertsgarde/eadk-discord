@@ -99,7 +99,7 @@ class EADKBot:
                 ephemeral=True,
             )
 
-        if desk_arg:
+        if desk_arg is not None:
             desk_index = desk_arg - 1
             desk_num = desk_arg
         else:

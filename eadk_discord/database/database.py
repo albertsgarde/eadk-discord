@@ -4,9 +4,8 @@ from pathlib import Path
 from beartype import beartype
 from pydantic import BaseModel, Field
 
-from eadk_discord.history import History
-
 from .event import Event
+from .history import History
 from .state import State
 
 

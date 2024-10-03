@@ -12,7 +12,7 @@ from discord.ext.commands import Bot, Context
 
 from eadk_discord.bot import CommandInfo, EADKBot, Response
 from eadk_discord.database import Database
-from eadk_discord.event import Event, SetNumDesks
+from eadk_discord.database.event import Event, SetNumDesks
 
 TEST_SERVER_ROLE_ID = ***REMOVED***
 EADK_DESK_ADMIN_ID = ***REMOVED***

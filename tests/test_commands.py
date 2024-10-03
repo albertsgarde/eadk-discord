@@ -4,8 +4,8 @@ import pytest
 
 from eadk_discord.bot import CommandInfo, EADKBot
 from eadk_discord.database import Database
-from eadk_discord.event import Event, SetNumDesks
-from eadk_discord.state import DateTooEarlyError
+from eadk_discord.database.event import Event, SetNumDesks
+from eadk_discord.database.state import DateTooEarlyError
 
 NOW: datetime = datetime.fromisoformat("2024-09-14")  # Saturday
 TODAY: date = NOW.date()

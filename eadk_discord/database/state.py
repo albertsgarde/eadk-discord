@@ -200,7 +200,7 @@ class State(BaseModel):
         if desk_index >= len(day.desks) or desk_index < 0:
             raise NonExistentDeskError(desk=desk_index, num_desks=len(day.desks), day=event.date)
         desk = day.desks[desk_index]
-        if not desk.booker:
+        if desk.booker is None:
             raise DeskNotBookedError(desk=desk_index, day=event.date)
         desk.booker = None
 

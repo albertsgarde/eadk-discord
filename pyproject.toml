@@ -17,6 +17,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 version = "0.0.1"
 
+[tool.coverage.report]
+exclude_also = [
+  "\\A(?s:.*# pragma: coverage exclude file.*)\\Z"
+]
+
 [tool.mypy]
 disallow_untyped_defs = true
 warn_redundant_casts = true
@@ -46,6 +51,7 @@ packages = ["eadk_discord"]
 dev-dependencies = [
   "mypy>=1.11.2",
   "pre-commit>=3.8.0",
+  "pytest-cov>=5.0.0",
   "pytest>=8.3.3",
   "ruff>=0.6.8"
 ]

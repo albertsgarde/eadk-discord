@@ -95,10 +95,8 @@ class Day(BaseModel):
         """
         Returns the DeskStatus object for the given desk.
         """
-        if desk < 0:
-            raise ValueError("desk number must be non-negative")
-        elif desk >= len(self.desks):
-            raise ValueError("desk number is out of range. There are only {len(self.desks)} desks.")
+        if desk < 0 or desk >= len(self.desks):
+            raise NonExistentDeskError(desk=desk, num_desks=len(self.desks), day=self.date)
         result: DeskStatus = self.desks[desk]
         return result
 

@@ -12,8 +12,6 @@ from eadk_discord.database.event_errors import (
     DeskAlreadyOwnedError,
     DeskNotBookedError,
     DeskNotOwnedError,
-    EventError,
-    HandleEventError,
     NonExistentDeskError,
     RemoveDeskError,
 )
@@ -155,20 +153,17 @@ class State(BaseModel):
 
     @beartype
     def handle_event(self, event: Event) -> None:
-        try:
-            match event.event:
-                case SetNumDesks():
-                    self._set_num_desks(event.event)
-                case BookDesk():
-                    self._book_desk(event.event)
-                case UnbookDesk():
-                    self._unbook_desk(event.event)
-                case MakeOwned():
-                    self._make_owned(event.event)
-                case MakeFlex():
-                    self._make_flex(event.event)
-        except EventError as e:
-            raise HandleEventError(event=event, error=e) from e
+        match event.event:
+            case SetNumDesks():
+                self._set_num_desks(event.event)
+            case BookDesk():
+                self._book_desk(event.event)
+            case UnbookDesk():
+                self._unbook_desk(event.event)
+            case MakeOwned():
+                self._make_owned(event.event)
+            case MakeFlex():
+                self._make_flex(event.event)
 
     @beartype
     def _set_num_desks(self, event: SetNumDesks) -> None:

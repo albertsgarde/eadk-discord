@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from eadk_discord import dates, fmt
 from eadk_discord.database import Database
 from eadk_discord.database.event import BookDesk, Event, MakeFlex, MakeOwned, UnbookDesk
-from eadk_discord.database.event_errors import HandleEventError
+from eadk_discord.database.event_errors import EventError
 
 TIME_ZONE = ZoneInfo("Europe/Copenhagen")
 
@@ -230,6 +230,6 @@ class EADKBot:
                     )
         if isinstance(error, discord.app_commands.errors.CommandInvokeError):
             match error.__cause__:
-                case HandleEventError(_event, event_error):
+                case EventError() as event_error:
                     return Response(message=event_error.message(info.format_user), ephemeral=True)
         raise error

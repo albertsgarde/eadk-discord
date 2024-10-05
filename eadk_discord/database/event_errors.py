@@ -22,6 +22,19 @@ class DateTooEarlyError(EventError):
 
 
 @dataclass
+class InvalidDateRangeError(EventError):
+    """
+    Raised when the end date of a date range is before the start date
+    """
+
+    start_date: Date
+    end_date: Date
+
+    def message(self, format_user: Callable[[int], str]) -> str:
+        return f"End date {self.end_date} is before the start date {self.start_date}."
+
+
+@dataclass
 class RemoveDeskError(EventError):
     """
     Raised when a desk cannot be removed because it is still booked.

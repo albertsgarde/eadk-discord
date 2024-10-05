@@ -70,20 +70,22 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
     @bot.tree.command(name="book", description="Book a desk.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
-    @app_commands.rename(booking_date_arg="date", desk="desk_id")
+    @app_commands.rename(booking_date_arg="date", desk_num_arg="desk_id")
     @app_commands.check(channel_check)
     @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID, EADK_DESK_REGULAR_ID)
     async def book(
         interaction: Interaction,
         booking_date_arg: str | None,
         user: Member | None,
-        desk: Range[int, 1] | None,
+        desk_num_arg: Range[int, 1] | None,
+        end_date_arg: str | None,
     ) -> None:
         await eadk_bot.book(
             CommandInfo.from_interaction(interaction),
             booking_date_arg,
             user.id if user else None,
-            desk,
+            desk_num_arg,
+            end_date_arg,
         ).send(interaction)
         database.save(database_path)
 
@@ -96,10 +98,15 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         interaction: Interaction,
         booking_date_arg: str | None,
         user: Member | None,
-        desk: Range[int, 1] | None,
+        desk_num_arg: Range[int, 1] | None,
+        end_date_arg: str | None,
     ) -> None:
         await eadk_bot.unbook(
-            CommandInfo.from_interaction(interaction), booking_date_arg, user.id if user else None, desk
+            CommandInfo.from_interaction(interaction),
+            booking_date_arg,
+            user.id if user else None,
+            desk_num_arg,
+            end_date_arg,
         ).send(interaction)
         database.save(database_path)
 

@@ -4,15 +4,37 @@ requires = ["setuptools", "setuptools-scm"]
 
 [project]
 authors = [{name = "albertsgarde", email = "albertsgarde@gmail.com"}]
+dependencies = [
+  "beartype>=0.19.0",
+  "discord-py>=2.4.0",
+  "pydantic>=2.9.2"
+]
 description = "A Discord bot the EADK discord server"
-dynamic = ["dependencies", "optional-dependencies"]
+dynamic = ["optional-dependencies"]
 license = {file = "LICENSE"}
 name = "eadk_discord"
 readme = "README.md"
 requires-python = ">=3.11"
 version = "0.0.1"
 
+[tool.coverage.report]
+exclude_also = [
+  "\\A(?s:.*# pragma: coverage exclude file.*)\\Z"
+]
+skip_covered = true
+
+[tool.mypy]
+disallow_untyped_defs = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
 [tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:'audioop' is deprecated and slated for removal in Python 3.13:DeprecationWarning"
+]
 pythonpath = ["eadk_discord"]
 
 [tool.ruff]
@@ -26,8 +48,11 @@ isort.known-first-party = ["eadk_discord"]
 [tool.setuptools]
 packages = ["eadk_discord"]
 
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
-
-[tool.setuptools.dynamic.optional-dependencies]
-dev = {file = ['requirements_dev.txt']}
+[tool.uv]
+dev-dependencies = [
+  "mypy>=1.11.2",
+  "pre-commit>=3.8.0",
+  "pytest-cov>=5.0.0",
+  "pytest>=8.3.3",
+  "ruff>=0.6.8"
+]

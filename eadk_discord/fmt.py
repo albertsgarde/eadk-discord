@@ -1,12 +1,22 @@
+# pragma: coverage exclude file
 import logging
+from datetime import date as Date  # noqa: N812
 
+from beartype import beartype
 from discord import Interaction
 
 
+@beartype
 def desk_index(index: int) -> str:
     return f"{index + 1}"
 
 
+@beartype
+def date(date: Date) -> str:
+    return date.isoformat()
+
+
+@beartype
 def user(interaction: Interaction, user: int) -> str:
     match interaction.guild:
         case None:

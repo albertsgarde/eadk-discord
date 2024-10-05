@@ -70,7 +70,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
     @bot.tree.command(name="book", description="Book a desk.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
-    @app_commands.rename(booking_date_arg="date", desk_num_arg="desk_id")
+    @app_commands.rename(booking_date_arg="date", desk_num_arg="desk_id", end_date_arg="end_date")
     @app_commands.check(channel_check)
     @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID, EADK_DESK_REGULAR_ID)
     async def book(
@@ -91,7 +91,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
 
     @bot.tree.command(name="unbook", description="Unbook a desk.", guilds=guilds)
     @app_commands.autocomplete(booking_date_arg=date_autocomplete)
-    @app_commands.rename(booking_date_arg="date", desk="desk_id")
+    @app_commands.rename(booking_date_arg="date", desk_num_arg="desk_id", end_date_arg="end_date")
     @app_commands.check(channel_check)
     @app_commands.checks.has_any_role(TEST_SERVER_ROLE_ID, EADK_DESK_ADMIN_ID, EADK_DESK_REGULAR_ID)
     async def unbook(

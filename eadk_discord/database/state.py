@@ -25,30 +25,22 @@ class DeskStatus(BaseModel):
     owner: int | None = Field(serialization_alias="owner")
 
     @beartype
-    def _make_owned(self, user: int) -> bool:
+    def _make_owned(self, user: int) -> None:
         """
-        Returns True if the desk was successfully permanently booked, False if the desk was already permanently booked.
+        Make the desk owned by the given user.
         """
-        if self.owner:
-            return False
-        else:
-            if self.booker is None:
-                self.booker = user
-            self.owner = user
-            return True
+        if self.booker is None:
+            self.booker = user
+        self.owner = user
 
     @beartype
-    def _make_flex(self) -> bool:
+    def _make_flex(self) -> None:
         """
-        Returns True if the desk was successfully unpermanently booked, False if the desk was not permanently booked.
+        Removes ownership of the desk, turning it into a flex desk.
         """
-        if self.owner:
-            if self.owner == self.booker:
-                self.booker = None
-            self.owner = None
-            return True
-        else:
-            return False
+        if self.owner == self.booker:
+            self.booker = None
+        self.owner = None
 
 
 class Day(BaseModel):
@@ -87,13 +79,6 @@ class Day(BaseModel):
             if desk.booker is None:
                 return i
         return None
-
-    @beartype
-    def available_desks(self) -> list[int]:
-        """
-        Returns a list of indices of available desks.
-        """
-        return [i for i, desk in enumerate(self.desks) if desk.booker is None]
 
     @beartype
     def booked_desks(self, member: int) -> list[int]:

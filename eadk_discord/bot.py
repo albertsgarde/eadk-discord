@@ -199,7 +199,7 @@ class EADKBot:
         return Response(message=f"Desk {desk_num} is now a flex desk from {date_str} onwards.")
 
     @beartype
-    def handle_error(self, info: CommandInfo, error: AppCommandError) -> Response:
+    def handle_error(self, info: CommandInfo, error: AppCommandError) -> Response:  # pragma: no cover
         match error:
             case discord.app_commands.errors.MissingAnyRole() | discord.app_commands.errors.MissingRole():
                 return Response(message="You do not have permission to run this command.", ephemeral=True)

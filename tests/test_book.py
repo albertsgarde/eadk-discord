@@ -5,6 +5,7 @@ import pytest
 from conftest import NOW, TODAY
 
 from eadk_discord.bot import CommandInfo, EADKBot
+from eadk_discord.bot_setup import INTERNAL_ERROR_MESSAGE
 from eadk_discord.database.event_errors import DeskAlreadyBookedError, NonExistentDeskError
 from eadk_discord.database.state import DateTooEarlyError
 
@@ -203,6 +204,33 @@ def test_book_with_date_user_desk(bot: EADKBot) -> None:
     assert response.ephemeral is False
     assert database.state.day(TODAY)[0].desk(0).booker is None
     assert database.state.day(TODAY)[0].desk(1).booker == 3
+
+
+def test_book_in_past(bot: EADKBot) -> None:
+    response = bot.book(
+        CommandInfo(now=NOW + timedelta(2), format_user=lambda user: str(user), author_id=1),
+        date_str=TODAY.isoformat(),
+        user_id=None,
+        desk_num=None,
+    )
+    assert response.ephemeral is True
+    assert response.message != INTERNAL_ERROR_MESSAGE
+
+
+def test_book_fully_booked(bot: EADKBot) -> None:
+    database = bot.database
+
+    for i in range(6):
+        database.state.day(TODAY)[0].desk(i).booker = i
+
+    response = bot.book(
+        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=7),
+        date_str=None,
+        user_id=None,
+        desk_num=None,
+    )
+    assert response.ephemeral is True
+    assert response.message != INTERNAL_ERROR_MESSAGE
 
 
 def test_book_too_early(bot: EADKBot) -> None:

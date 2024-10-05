@@ -12,6 +12,7 @@ from eadk_discord.database.event_errors import (
     DeskAlreadyOwnedError,
     DeskNotBookedError,
     DeskNotOwnedError,
+    InvalidDateRangeError,
     NonExistentDeskError,
     RemoveDeskError,
 )
@@ -113,6 +114,15 @@ class State(BaseModel):
         return self.days[day_index], day_index
 
     @beartype
+    def day_range(self, start_date: Date, end_date: Date) -> Sequence[Day]:
+        if end_date < start_date:
+            raise InvalidDateRangeError(start_date=start_date, end_date=end_date)
+        start_day, start_index = self.day(start_date)
+        end_day, end_index = self.day(end_date)
+        # The two lines above should ensure that this line is valid.
+        return self.days[start_index : end_index + 1]
+
+    @beartype
     def handle_event(self, event: Event) -> None:
         match event.event:
             case SetNumDesks():
@@ -147,25 +157,24 @@ class State(BaseModel):
 
     @beartype
     def _book_desk(self, event: BookDesk) -> None:
-        day, _ = self.day(event.date)
+        days = self.day_range(event.start_date, event.end_date)
         desk_index = event.desk_index
-        if desk_index >= len(day.desks) or desk_index < 0:
-            raise NonExistentDeskError(desk=desk_index, num_desks=len(day.desks), day=event.date)
-        desk = day.desks[desk_index]
-        if desk.booker is not None:
-            raise DeskAlreadyBookedError(booker=desk.booker, desk=desk_index, day=event.date)
-        desk.booker = event.user
+        for day in days:
+            booker = day.desk(desk_index).booker
+            if booker is not None:
+                raise DeskAlreadyBookedError(booker=booker, desk=desk_index, day=day.date)
+        for day in days:
+            day.desk(desk_index).booker = event.user
 
     @beartype
     def _unbook_desk(self, event: UnbookDesk) -> None:
-        day, _ = self.day(event.date)
+        days = self.day_range(event.start_date, event.end_date)
         desk_index = event.desk_index
-        if desk_index >= len(day.desks) or desk_index < 0:
-            raise NonExistentDeskError(desk=desk_index, num_desks=len(day.desks), day=event.date)
-        desk = day.desks[desk_index]
-        if desk.booker is None:
-            raise DeskNotBookedError(desk=desk_index, day=event.date)
-        desk.booker = None
+        for day in days:
+            if day.desk(desk_index) is None:
+                raise DeskNotBookedError(desk=desk_index, day=day.date)
+        for day in days:
+            day.desk(desk_index).booker = None
 
     @beartype
     def _make_owned(self, event: MakeOwned) -> None:

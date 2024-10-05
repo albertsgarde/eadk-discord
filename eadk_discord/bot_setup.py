@@ -19,6 +19,8 @@ TEST_SERVER_ROLE_ID = ***REMOVED***
 EADK_DESK_ADMIN_ID = ***REMOVED***
 EADK_DESK_REGULAR_ID = ***REMOVED***
 
+INTERNAL_ERROR_MESSAGE = "INTERNAL ERROR HAS OCCURRED BEEP BOOP"
+
 
 def author_id(interaction: Interaction) -> int:
     return interaction.user.id
@@ -154,7 +156,7 @@ def setup_bot(database_path: Path, guilds: list[Snowflake]) -> Bot:
         try:
             await eadk_bot.handle_error(CommandInfo.from_interaction(interaction), error).send(interaction)
         except Exception:
-            await Response(message="INTERNAL ERROR HAS OCCURRED BEEP BOOP", ephemeral=True).send(interaction)
+            await Response(message=INTERNAL_ERROR_MESSAGE, ephemeral=True).send(interaction)
             raise
 
     return bot

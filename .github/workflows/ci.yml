@@ -36,3 +36,13 @@ jobs:
                   mypy_version: 1.11.2
                   requirement_files: requirements.txt requirements_dev.txt
                   python_version: '3.12'
+
+            - name: Run pytest
+              uses: pavelzw/pytest-action@v2
+              with:
+                  verbose: true
+                  emoji: true
+                  job-summary: true
+                  custom-arguments: -q
+                  click-to-expand: true
+                  report-title: Test Report

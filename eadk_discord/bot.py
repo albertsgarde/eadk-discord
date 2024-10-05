@@ -169,12 +169,6 @@ class EADKBot:
         booking_date = dates.get_booking_date(start_date_str, info.now)
         date_str = fmt.date(booking_date)
 
-        if booking_date < info.now.date():
-            return Response(
-                message=f"Date {date_str} not available for booking. Desks cannot be made permanent retroactively.",
-                ephemeral=True,
-            )
-
         desk_index = desk_num - 1
 
         if user_id is None:
@@ -192,12 +186,6 @@ class EADKBot:
     def makeflex(self, info: CommandInfo, start_date_str: str, desk_num: int) -> Response:
         booking_date = dates.get_booking_date(start_date_str, info.now)
         date_str = fmt.date(booking_date)
-
-        if booking_date < info.now.date():
-            return Response(
-                message=f"Date {date_str} not available for booking. You cannot make a desk permanent retroactively.",
-                ephemeral=True,
-            )
 
         desk_index = desk_num - 1
 

@@ -21,13 +21,13 @@ class Database(BaseModel):
         return Database(history=history, state=state)
 
     @beartype
-    def save(self, path: Path) -> None:
+    def save(self, path: Path) -> None:  # pragma: no cover
         with path.open("w") as file:
             file.write(self.history.to_json())
 
     @beartype
     @staticmethod
-    def load(path: Path) -> "Database":
+    def load(path: Path) -> "Database":  # pragma: no cover
         with path.open("r") as file:
             data = file.read()
         history = History.from_json(data)

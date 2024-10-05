@@ -25,28 +25,6 @@ class DeskStatus(BaseModel):
     owner: int | None = Field(serialization_alias="owner")
 
     @beartype
-    def _book(self, user: int) -> bool:
-        """
-        Returns True if the desk was successfully booked, False if the desk was already booked.
-        """
-        if self.booker:
-            return False
-        else:
-            self.booker = user
-            return True
-
-    @beartype
-    def _unbook(self) -> bool:
-        """
-        Returns True if the desk was successfully unbooked, False if the desk was not booked.
-        """
-        if self.booker:
-            self.booker = None
-            return True
-        else:
-            return False
-
-    @beartype
     def _make_owned(self, user: int) -> bool:
         """
         Returns True if the desk was successfully permanently booked, False if the desk was already permanently booked.

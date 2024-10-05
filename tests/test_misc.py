@@ -16,6 +16,7 @@ def test_date_invalid(bot: EADKBot) -> None:
             date_str="invalid",
             user_id=None,
             desk_num=None,
+            end_date_str=None,
         )
 
 
@@ -65,6 +66,7 @@ def test_change_desk_num_owned_or_used(bot: EADKBot) -> None:
         date_str=date1.isoformat(),
         user_id=None,
         desk_num=6,
+        end_date_str=None,
     )
 
     database.handle_event(Event(author=None, time=NOW, event=SetNumDesks(date=date1, num_desks=7)))
@@ -74,6 +76,7 @@ def test_change_desk_num_owned_or_used(bot: EADKBot) -> None:
         date_str=date2.isoformat(),
         user_id=None,
         desk_num=7,
+        end_date_str=None,
     )
 
     with pytest.raises(RemoveDeskError) as e:

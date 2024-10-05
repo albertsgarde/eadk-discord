@@ -10,13 +10,15 @@ class SetNumDesks(BaseModel):
 
 
 class BookDesk(BaseModel):
-    date: Date = Field()
+    start_date: Date = Field()
+    end_date: Date = Field()
     desk_index: int = Field()
     user: int = Field()
 
 
 class UnbookDesk(BaseModel):
-    date: Date = Field()
+    start_date: Date = Field()
+    end_date: Date = Field()
     desk_index: int = Field()
 
 

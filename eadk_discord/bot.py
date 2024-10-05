@@ -85,7 +85,14 @@ class EADKBot:
         )
 
     @beartype
-    def book(self, info: CommandInfo, date_str: str | None, user_id: int | None, desk_num: int | None) -> Response:
+    def book(
+        self,
+        info: CommandInfo,
+        date_str: str | None,
+        user_id: int | None,
+        desk_num: int | None,
+        end_date_str: str | None,
+    ) -> Response:
         if user_id is None:
             user_id = info.author_id
 
@@ -93,6 +100,8 @@ class EADKBot:
         booking_day, _ = self._database.state.day(booking_date)
         date_str = fmt.date(booking_date)
 
+        end_date = dates.parse_date_arg(end_date_str, info.now.date()) if end_date_str is not None else None
+
         if booking_date < info.now.date():
             return Response(
                 message=f"Date {date_str} not available for booking. Desks cannot be unbooked in the past.",
@@ -102,26 +111,56 @@ class EADKBot:
         if desk_num is not None:
             desk_index = desk_num - 1
         else:
+            if end_date is not None:
+                return Response(message="A desk must be specified for range bookings.", ephemeral=True)
             desk_index_option = booking_day.get_available_desk()
             if desk_index_option is not None:
                 desk_index = desk_index_option
                 desk_num = desk_index + 1
             else:
                 return Response(message=f"No more desks are available for booking on {date_str}.", ephemeral=True)
+
+        if end_date is not None:
+            days = self._database.state.day_range(booking_date, end_date)
+            for day in days:
+                if day.desk(desk_index).owner is not info.author_id:
+                    return Response(
+                        message="Range bookings are only allowed for desks you own for the entire range.",
+                        ephemeral=True,
+                    )
+
         self._database.handle_event(
             Event(
                 author=info.author_id,
                 time=datetime.now(),
-                event=BookDesk(date=booking_date, desk_index=desk_index, user=user_id),
+                event=BookDesk(
+                    start_date=booking_date, end_date=end_date or booking_date, desk_index=desk_index, user=user_id
+                ),
             )
         )
-        return Response(message=f"Desk {desk_num} has been booked for {info.format_user(user_id)} on {date_str}.")
+        if end_date is not None:
+            return Response(
+                message=f"Desk {desk_num} has been booked for {info.format_user(user_id)} "
+                f"from {date_str} to {fmt.date(end_date)}."
+            )
+        else:
+            return Response(message=f"Desk {desk_num} has been booked for {info.format_user(user_id)} on {date_str}.")
 
     @beartype
-    def unbook(self, info: CommandInfo, date_str: str | None, user_id: int | None, desk_num: int | None) -> Response:
+    def unbook(
+        self,
+        info: CommandInfo,
+        date_str: str | None,
+        user_id: int | None,
+        desk_num: int | None,
+        end_date_str: str | None,
+    ) -> Response:
         booking_date = dates.get_booking_date(date_str, info.now)
-        booking_day, _ = self._database.state.day(booking_date)
         date_str = fmt.date(booking_date)
+
+        end_date = dates.parse_date_arg(end_date_str, info.now.date()) if end_date_str is not None else booking_date
+
+        booking_days = self._database.state.day_range(booking_date, end_date)
 
         if booking_date < info.now.date():
             return Response(
@@ -129,15 +168,29 @@ class EADKBot:
                 ephemeral=True,
             )
 
+        if len(booking_days) > 1:
+            if desk_num is None:
+                return Response(message="A desk must be specified for range unbookings.", ephemeral=True)
+            desk_index = desk_num - 1
+            for booking_day in booking_days:
+                if booking_day.desk(desk_index).owner != info.author_id:
+                    return Response(
+                        message="Range unbookings are only allowed for desks you own for the entire range.",
+                        ephemeral=True,
+                    )
+
         if desk_num is not None:
             desk_index = desk_num - 1
             if user_id is not None:
-                if user_id != booking_day.desk(desk_index).booker:
-                    return Response(
-                        message=f"Desk {desk_num} is not booked by {info.format_user(user_id)} on {date_str}.",
-                        ephemeral=True,
-                    )
+                for booking_day in booking_days:
+                    if user_id != booking_day.desk(desk_index).booker:
+                        return Response(
+                            message=f"Desk {desk_num} is not booked by {info.format_user(user_id)} on {date_str}.",
+                            ephemeral=True,
+                        )
         else:
+            assert len(booking_days) == 1
+            booking_day = booking_days[0]
             if user_id is None:
                 user_id = info.author_id
             desk_indices = booking_day.booked_desks(user_id)
@@ -149,20 +202,31 @@ class EADKBot:
                     message=f"{info.format_user(user_id)} already has no desks booked for {date_str}.", ephemeral=True
                 )
 
-        desk_booker = booking_day.desk(desk_index).booker
-        if desk_booker is not None:
+        if len(booking_days) > 1:
             self._database.handle_event(
                 Event(
                     author=info.author_id,
                     time=datetime.now(),
-                    event=UnbookDesk(date=booking_date, desk_index=desk_index),
+                    event=UnbookDesk(start_date=booking_date, end_date=end_date, desk_index=desk_index),
                 )
             )
-            return Response(
-                message=f"Desk {desk_num} is no longer booked for {info.format_user(desk_booker)} on {date_str}."
-            )
+            return Response(message=(f"Desk {desk_num} has been unbooked from {date_str} to {fmt.date(end_date)}."))
         else:
-            return Response(message=f"Desk {desk_num} is already free on {date_str}.", ephemeral=True)
+            [booking_day] = booking_days
+            desk_booker = booking_day.desk(desk_index).booker
+            if desk_booker is not None:
+                self._database.handle_event(
+                    Event(
+                        author=info.author_id,
+                        time=datetime.now(),
+                        event=UnbookDesk(start_date=booking_date, end_date=booking_date, desk_index=desk_index),
+                    )
+                )
+                return Response(
+                    message=f"Desk {desk_num} is no longer booked for {info.format_user(desk_booker)} on {date_str}."
+                )
+            else:
+                return Response(message=f"Desk {desk_num} is already free on {date_str}.", ephemeral=True)
 
     @beartype
     def makeowned(self, info: CommandInfo, start_date_str: str, user_id: int | None, desk_num: int) -> Response:
@@ -209,4 +273,10 @@ class EADKBot:
                 match error.__cause__:
                     case EventError() as event_error:
                         return Response(message=event_error.message(info.format_user), ephemeral=True)
+                    case dates.DateParseError(argument):
+                        return Response(
+                            f"Date {argument} could not be parsed. "
+                            "Please use the format YYYY-MM-DD, 'today', 'tomorrow', or specify a weekday.",
+                            ephemeral=True,
+                        )
         raise error

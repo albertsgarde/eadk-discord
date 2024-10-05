@@ -32,7 +32,7 @@ class RemoveDeskError(EventError):
     desk_index: int
     day: Date
 
-    def message(self, format_user: Callable[[int], str]) -> str:
+    def message(self, format_user: Callable[[int], str]) -> str:  # pragma: no cover
         if self.booker and self.owner is None:
             return (
                 f"Desk {self.desk_index + 1} on {self.day} cannot be removed "

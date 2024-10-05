@@ -97,7 +97,7 @@ def test_makeowned_booked(bot: EADKBot) -> None:
     assert database.state.day(distant_date)[0].desk(2).owner == 1
 
 
-def test_makeowned_nonexistent_desk(bot: EADKBot) -> None:
+def test_makeowned_non_existent_desk(bot: EADKBot) -> None:
     database = bot.database
 
     tomorrow = TODAY + timedelta(days=1)

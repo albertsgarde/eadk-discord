@@ -44,7 +44,7 @@ class Response:
         self.embed = embed
 
     @beartype
-    async def send(self, interaction: discord.Interaction) -> None:
+    async def send(self, interaction: discord.Interaction) -> None:  # pragma: no cover
         if self.embed is None:
             await interaction.response.send_message(self.message, ephemeral=self.ephemeral)
         else:

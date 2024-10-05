@@ -25,14 +25,24 @@ jobs:
             - name: Validate YAML files
               run: yamllint . --strict
 
-            - name: Ruff
-              uses: chartboost/ruff-action@v1
+            - name: Install uv
+              uses: astral-sh/setup-uv@v3
               with:
-                  src: eadk_discord
+                  version: 0.4.18
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version-file: pyproject.toml
+
+            - name: Install the project
+              run: uv sync --all-extras --dev
+
+            - name: Ruff
+              run: uv run ruff check
 
             - name: Mypy
-              uses: jashparekh/mypy-action@v2
-              with:
-                  mypy_version: 1.11.2
-                  requirement_files: requirements.txt requirements_dev.txt
-                  python_version: '3.12'
+              run: uv run mypy .
+
+            - name: Run pytest
+              run: uv run pytest --cov --cov-report=term-missing

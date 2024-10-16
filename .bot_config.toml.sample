@@ -1,6 +1,6 @@
 bot_token = <your bot token>
 database_path = <path to your database file>
-guild_ids = [<ids of servers to run on>]                                                      # Test server id
-channel_ids = [<ids of channels within those servers to accept commands from>]                # Test server channel id
-regular_role_ids = [<ids of roles to treat as office regulars>]                               # Test server has no regular roles
-admin_role_ids = [<ids of roles to treat as office admins>]                                   # Test server admin role id
+guild_ids = [<ids of servers to run on>]
+channel_ids = [<ids of channels within those servers to accept commands from>]
+regular_role_ids = [<ids of roles to treat as office regulars>]
+admin_role_ids = [<ids of roles to treat as office admins>]

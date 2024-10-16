@@ -66,7 +66,7 @@ def test_book_with_user(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        command_info(),
+        command_info(author_role_ids=[REGULAR_ROLE_ID]),
         date_str=None,
         user_id=7,
         desk_num=None,
@@ -82,7 +82,7 @@ def test_book_with_user_desk(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        command_info(),
+        command_info(author_role_ids=[REGULAR_ROLE_ID]),
         date_str=None,
         user_id=4,
         desk_num=5,
@@ -141,7 +141,7 @@ def test_book_with_date_user(bot: EADKBot) -> None:
     tomorrow = TODAY + timedelta(1)
 
     response = bot.book(
-        command_info(),
+        command_info(author_role_ids=[REGULAR_ROLE_ID]),
         date_str="tomorrow",
         user_id=8,
         desk_num=None,
@@ -172,7 +172,7 @@ def test_book_range_with_desk(bot: EADKBot) -> None:
     tomorrow = TODAY + timedelta(1)
 
     response = bot.makeowned(
-        command_info(),
+        command_info(author_role_ids=[ADMIN_ROLE_ID]),
         start_date_str="today",
         user_id=None,
         desk_num=3,
@@ -294,7 +294,7 @@ def test_book_with_date_user_desk(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        command_info(),
+        command_info(author_role_ids=[REGULAR_ROLE_ID]),
         date_str="today",
         user_id=3,
         desk_num=2,
@@ -307,7 +307,7 @@ def test_book_with_date_user_desk(bot: EADKBot) -> None:
 
 def test_book_in_past(bot: EADKBot) -> None:
     response = bot.book(
-        command_info(now=NOW + timedelta(2), format_user=lambda user: str(user), author_id=1),
+        command_info(now=NOW + timedelta(2)),
         date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=None,
@@ -324,7 +324,7 @@ def test_book_fully_booked(bot: EADKBot) -> None:
         database.state.day(TODAY)[0].desk(i).booker = i
 
     response = bot.book(
-        command_info(now=NOW, format_user=lambda user: str(user), author_id=7),
+        command_info(author_id=7),
         date_str=None,
         user_id=None,
         desk_num=None,
@@ -348,7 +348,7 @@ def test_book_too_early(bot: EADKBot) -> None:
 def test_book_non_existent_desk(bot: EADKBot) -> None:
     with pytest.raises(NonExistentDeskError):
         bot.book(
-            command_info(),
+            command_info(author_role_ids=[REGULAR_ROLE_ID]),
             date_str="today",
             user_id=0,
             desk_num=7,
@@ -356,7 +356,7 @@ def test_book_non_existent_desk(bot: EADKBot) -> None:
         )
     with pytest.raises(NonExistentDeskError):
         bot.book(
-            command_info(),
+            command_info(author_role_ids=[REGULAR_ROLE_ID]),
             date_str="today",
             user_id=0,
             desk_num=0,

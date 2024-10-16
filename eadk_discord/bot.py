@@ -224,9 +224,6 @@ class EADKBot:
                     message=f"{info.format_user(user_id)} already has no desks booked for {date_str}.", ephemeral=True
                 )
 
-        if user_id != info.author_id and not self._is_author_regular(info):
-            return Response(message="You do not have permission to unbook desks for other users.", ephemeral=True)
-
         if len(booking_days) > 1:
             self._database.handle_event(
                 Event(
@@ -238,6 +235,8 @@ class EADKBot:
             return Response(message=(f"Desk {desk_num} has been unbooked from {date_str} to {fmt.date(end_date)}."))
         else:
             [booking_day] = booking_days
+            if booking_day.desk(desk_index).booker != info.author_id and not self._is_author_regular(info):
+                return Response(message="You do not have permission to unbook desks for other users.", ephemeral=True)
             desk_booker = booking_day.desk(desk_index).booker
             if desk_booker is not None:
                 self._database.handle_event(

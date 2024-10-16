@@ -33,8 +33,8 @@ class BotConfig(BaseModel):
     database_path: Path
     guild_ids: Sequence[int | str]
     channel_ids: Sequence[int | str]
-    regular_role_ids: Sequence[int | str]
-    admin_role_ids: Sequence[int | str]
+    regular_role_ids: Sequence[int]
+    admin_role_ids: Sequence[int]
 
     def guilds(self) -> Sequence[Snowflake]:
         return [discord.Object(id=int(guild_id)) for guild_id in self.guild_ids]
@@ -55,7 +55,7 @@ class BotConfig(BaseModel):
         intents.message_content = True
         intents.members = True
 
-        eadk_bot = EADKBot(database, self.regular_role_ids, self.admin_role_ids)
+        eadk_bot = EADKBot(database, set(self.regular_role_ids), set(self.admin_role_ids))
         bot = Bot(command_prefix="!", intents=intents)
 
         async def channel_check(interaction: Interaction[discord.Client]) -> bool:
@@ -78,7 +78,6 @@ class BotConfig(BaseModel):
         @app_commands.autocomplete(booking_date_arg=date_autocomplete)
         @app_commands.rename(booking_date_arg="date", desk_num_arg="desk_id", end_date_arg="end_date")
         @app_commands.check(channel_check)
-        @app_commands.checks.has_any_role(*self.regular_role_ids, *self.admin_role_ids)
         async def book(
             interaction: Interaction,
             booking_date_arg: str | None,
@@ -99,7 +98,6 @@ class BotConfig(BaseModel):
         @app_commands.autocomplete(booking_date_arg=date_autocomplete)
         @app_commands.rename(booking_date_arg="date", desk_num_arg="desk_id", end_date_arg="end_date")
         @app_commands.check(channel_check)
-        @app_commands.checks.has_any_role(*self.regular_role_ids, *self.admin_role_ids)
         async def unbook(
             interaction: Interaction,
             booking_date_arg: str | None,

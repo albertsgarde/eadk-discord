@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 db*.json
+.bot_config.toml
 
 .vscode/
 .ruff_cache/

@@ -8,5 +8,4 @@ fi
 source .venv/bin/activate
 python -m pip install uv
 uv sync
-source .env
-uv run eadk_discord
+export EADK_DISCORD_CONFIG_PATH=.bot_config.toml && uv run eadk_discord

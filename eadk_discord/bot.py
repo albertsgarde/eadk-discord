@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -20,14 +20,23 @@ class CommandInfo(BaseModel):
     now: datetime = Field()
     format_user: Callable[[int], str] = Field()
     author_id: int = Field()
+    author_role_ids: Sequence[int] = Field()
 
     @beartype
     @staticmethod
     def from_interaction(interaction: discord.Interaction) -> "CommandInfo":
+        match interaction.user:
+            case discord.Member() as member:
+                role_ids = [role.id for role in member.roles]
+            case discord.User():
+                role_ids = []
+            case _:
+                raise ValueError("Invalid interaction user type")
         return CommandInfo(
             now=datetime.now(TIME_ZONE),
             format_user=lambda user: fmt.user(interaction, user),
             author_id=interaction.user.id,
+            author_role_ids=role_ids,
         )
 
 
@@ -53,10 +62,16 @@ class Response:
 
 class EADKBot:
     _database: Database
+    _regular_role_ids: Sequence[int | str]
+    _admin_role_ids: Sequence[int | str]
 
     @beartype
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self, database: Database, regular_role_ids: Sequence[int | str], admin_role_ids: Sequence[int | str]
+    ) -> None:
         self._database = database
+        self._regular_role_ids = regular_role_ids
+        self._admin_role_ids = admin_role_ids
 
     @property
     def database(self) -> Database:

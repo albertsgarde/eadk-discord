@@ -55,7 +55,7 @@ class BotConfig(BaseModel):
         intents.message_content = True
         intents.members = True
 
-        eadk_bot = EADKBot(database)
+        eadk_bot = EADKBot(database, self.regular_role_ids, self.admin_role_ids)
         bot = Bot(command_prefix="!", intents=intents)
 
         async def channel_check(interaction: Interaction[discord.Client]) -> bool:

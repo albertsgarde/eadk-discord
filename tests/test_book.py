@@ -2,9 +2,9 @@ from datetime import timedelta
 from itertools import chain
 
 import pytest
-from conftest import NOW, TODAY
+from conftest import NOW, TODAY, command_info
 
-from eadk_discord.bot import CommandInfo, EADKBot
+from eadk_discord.bot import EADKBot
 from eadk_discord.bot_setup import INTERNAL_ERROR_MESSAGE
 from eadk_discord.database.event_errors import DeskAlreadyBookedError, NonExistentDeskError
 from eadk_discord.database.state import DateTooEarlyError
@@ -14,7 +14,7 @@ def test_book(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=None,
         desk_num=None,
@@ -30,7 +30,7 @@ def test_book_with_desk(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=None,
         desk_num=5,
@@ -49,7 +49,7 @@ def test_book2(bot: EADKBot) -> None:
     database.state.day(TODAY)[0].desk(0).booker = 0
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=None,
         desk_num=None,
@@ -66,7 +66,7 @@ def test_book_with_user(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=7,
         desk_num=None,
@@ -82,7 +82,7 @@ def test_book_with_user_desk(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=4,
         desk_num=5,
@@ -101,7 +101,7 @@ def test_book_with_date(bot: EADKBot) -> None:
     tomorrow = TODAY + timedelta(1)
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="tomorrow",
         user_id=None,
         desk_num=None,
@@ -121,7 +121,7 @@ def test_book_with_date_desk(bot: EADKBot) -> None:
     tomorrow = TODAY + timedelta(1)
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="tomorrow",
         user_id=None,
         desk_num=3,
@@ -141,7 +141,7 @@ def test_book_with_date_user(bot: EADKBot) -> None:
     tomorrow = TODAY + timedelta(1)
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="tomorrow",
         user_id=8,
         desk_num=None,
@@ -157,7 +157,7 @@ def test_book_with_date_user(bot: EADKBot) -> None:
 
 def test_book_range_no_desk(bot: EADKBot) -> None:
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="today",
         user_id=None,
         desk_num=None,
@@ -172,7 +172,7 @@ def test_book_range_with_desk(bot: EADKBot) -> None:
     tomorrow = TODAY + timedelta(1)
 
     response = bot.makeowned(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         start_date_str="today",
         user_id=None,
         desk_num=3,
@@ -181,7 +181,7 @@ def test_book_range_with_desk(bot: EADKBot) -> None:
     assert not response.ephemeral
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="today",
         user_id=None,
         desk_num=3,
@@ -191,7 +191,7 @@ def test_book_range_with_desk(bot: EADKBot) -> None:
     assert not response.ephemeral
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="today",
         user_id=None,
         desk_num=3,
@@ -209,7 +209,7 @@ def test_book_range_with_desk(bot: EADKBot) -> None:
 
 def test_book_range_unowned(bot: EADKBot) -> None:
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="today",
         user_id=None,
         desk_num=3,
@@ -224,7 +224,7 @@ def test_book_weekday_same_week(bot: EADKBot) -> None:
     sunday = TODAY + timedelta(2)
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="sunday",
         user_id=None,
         desk_num=None,
@@ -245,7 +245,7 @@ def test_book_weekday_next_week(bot: EADKBot) -> None:
     tuesday = TODAY + timedelta(4)
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="tuesday",
         user_id=None,
         desk_num=None,
@@ -266,7 +266,7 @@ def test_book_date(bot: EADKBot) -> None:
     date = TODAY + timedelta(23)
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=date.isoformat(),
         user_id=None,
         desk_num=None,
@@ -282,7 +282,7 @@ def test_book_with_date_user_desk(bot: EADKBot) -> None:
     database = bot.database
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="today",
         user_id=3,
         desk_num=2,
@@ -295,7 +295,7 @@ def test_book_with_date_user_desk(bot: EADKBot) -> None:
 
 def test_book_in_past(bot: EADKBot) -> None:
     response = bot.book(
-        CommandInfo(now=NOW + timedelta(2), format_user=lambda user: str(user), author_id=1),
+        command_info(now=NOW + timedelta(2), format_user=lambda user: str(user), author_id=1),
         date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=None,
@@ -312,7 +312,7 @@ def test_book_fully_booked(bot: EADKBot) -> None:
         database.state.day(TODAY)[0].desk(i).booker = i
 
     response = bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=7),
+        command_info(now=NOW, format_user=lambda user: str(user), author_id=7),
         date_str=None,
         user_id=None,
         desk_num=None,
@@ -325,7 +325,7 @@ def test_book_fully_booked(bot: EADKBot) -> None:
 def test_book_too_early(bot: EADKBot) -> None:
     with pytest.raises(DateTooEarlyError):
         bot.book(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             date_str=(TODAY - timedelta(1)).isoformat(),
             user_id=0,
             desk_num=1,
@@ -336,7 +336,7 @@ def test_book_too_early(bot: EADKBot) -> None:
 def test_book_non_existent_desk(bot: EADKBot) -> None:
     with pytest.raises(NonExistentDeskError):
         bot.book(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             date_str="today",
             user_id=0,
             desk_num=7,
@@ -344,7 +344,7 @@ def test_book_non_existent_desk(bot: EADKBot) -> None:
         )
     with pytest.raises(NonExistentDeskError):
         bot.book(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             date_str="today",
             user_id=0,
             desk_num=0,
@@ -359,7 +359,7 @@ def test_book_already_booked(bot: EADKBot) -> None:
 
     with pytest.raises(DeskAlreadyBookedError):
         bot.book(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             date_str="today",
             user_id=None,
             desk_num=1,

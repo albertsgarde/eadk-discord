@@ -1,9 +1,9 @@
 from datetime import timedelta
 
 import pytest
-from conftest import NOW, TODAY
+from conftest import NOW, TODAY, command_info
 
-from eadk_discord.bot import CommandInfo, EADKBot
+from eadk_discord.bot import EADKBot
 from eadk_discord.database.event import Event, SetNumDesks
 from eadk_discord.database.event_errors import DateTooEarlyError, NonExistentDeskError, RemoveDeskError
 from eadk_discord.dates import DateParseError
@@ -12,7 +12,7 @@ from eadk_discord.dates import DateParseError
 def test_date_invalid(bot: EADKBot) -> None:
     with pytest.raises(DateParseError):
         bot.book(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             date_str="invalid",
             user_id=None,
             desk_num=None,
@@ -21,13 +21,11 @@ def test_date_invalid(bot: EADKBot) -> None:
 
 
 def test_info(bot: EADKBot) -> None:
-    response = bot.info(CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str=None)
+    response = bot.info(command_info(), date_str=None)
     assert response.ephemeral is True
 
     with pytest.raises(DateTooEarlyError):
-        response = bot.info(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1), date_str="2021-01-01"
-        )
+        response = bot.info(command_info(), date_str="2021-01-01")
 
 
 def test_change_desk_num(bot: EADKBot) -> None:
@@ -62,7 +60,7 @@ def test_change_desk_num_owned_or_used(bot: EADKBot) -> None:
     date2 = TODAY + timedelta(days=42)
 
     bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=date1.isoformat(),
         user_id=None,
         desk_num=6,
@@ -72,7 +70,7 @@ def test_change_desk_num_owned_or_used(bot: EADKBot) -> None:
     database.handle_event(Event(author=None, time=NOW, event=SetNumDesks(date=date1, num_desks=7)))
 
     bot.book(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=date2.isoformat(),
         user_id=None,
         desk_num=7,

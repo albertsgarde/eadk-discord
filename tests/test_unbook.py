@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 import pytest
-from conftest import NOW, TODAY, command_info
+from conftest import ADMIN_ROLE_ID, NOW, REGULAR_ROLE_ID, TODAY, command_info
 
 from eadk_discord.bot import EADKBot
 from eadk_discord.bot_setup import INTERNAL_ERROR_MESSAGE
@@ -177,16 +177,34 @@ def test_unbook_range(bot: EADKBot) -> None:
 
 
 def test_unbook_range_unowned(bot: EADKBot) -> None:
+    database = bot.database
+
     date = TODAY + timedelta(3)
 
+    database.state.day(TODAY)[0].desk(0).booker = 1
+    database.state.day(TODAY + timedelta(1))[0].desk(0).booker = 1
+    database.state.day(TODAY + timedelta(2))[0].desk(0).booker = 1
+    database.state.day(date)[0].desk(0).booker = 1
+
     response = bot.unbook(
-        command_info(),
+        command_info(author_role_ids=[REGULAR_ROLE_ID]),
         date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=1,
         end_date_str=date.isoformat(),
     )
     assert response.ephemeral
+    assert database.state.day(TODAY)[0].desk(0).booker == 1
+
+    response = bot.unbook(
+        command_info(author_role_ids=[ADMIN_ROLE_ID]),
+        date_str=TODAY.isoformat(),
+        user_id=None,
+        desk_num=1,
+        end_date_str=date.isoformat(),
+    )
+    assert not response.ephemeral
+    assert database.state.day(TODAY)[0].desk(0).booker is None
 
 
 def test_unbook_in_past(bot: EADKBot) -> None:
@@ -251,3 +269,29 @@ def test_unbook_unbooked_desk(bot: EADKBot) -> None:
     )
     assert response.ephemeral is True
     assert response.message != INTERNAL_ERROR_MESSAGE
+
+
+def test_unbook_for_other(bot: EADKBot) -> None:
+    database = bot.database
+
+    database.state.day(TODAY)[0].desk(3).booker = 7
+
+    response = bot.unbook(
+        command_info(author_role_ids=[]),
+        date_str=None,
+        user_id=7,
+        desk_num=4,
+        end_date_str=None,
+    )
+    assert response.ephemeral is True
+    assert database.state.day(TODAY)[0].desk(3).booker == 7
+
+    response = bot.unbook(
+        command_info(author_role_ids=[ADMIN_ROLE_ID]),
+        date_str=None,
+        user_id=None,
+        desk_num=4,
+        end_date_str=None,
+    )
+    assert response.ephemeral is False
+    assert database.state.day(TODAY)[0].desk(3).booker is None

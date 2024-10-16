@@ -2,7 +2,7 @@ from datetime import timedelta
 from itertools import chain
 
 import pytest
-from conftest import NOW, TODAY, command_info
+from conftest import ADMIN_ROLE_ID, NOW, REGULAR_ROLE_ID, TODAY, command_info
 
 from eadk_discord.bot import EADKBot
 from eadk_discord.bot_setup import INTERNAL_ERROR_MESSAGE
@@ -208,14 +208,26 @@ def test_book_range_with_desk(bot: EADKBot) -> None:
 
 
 def test_book_range_unowned(bot: EADKBot) -> None:
+    database = bot.database
+
     response = bot.book(
-        command_info(),
+        command_info(author_role_ids=[REGULAR_ROLE_ID]),
         date_str="today",
         user_id=None,
         desk_num=3,
         end_date_str="tomorrow",
     )
     assert response.ephemeral
+    response = bot.book(
+        command_info(author_role_ids=[ADMIN_ROLE_ID]),
+        date_str="today",
+        user_id=None,
+        desk_num=3,
+        end_date_str="tomorrow",
+    )
+    assert not response.ephemeral
+    assert database.state.day(TODAY)[0].desk(2).booker == 1
+    assert database.state.day(TODAY + timedelta(1))[0].desk(2).booker == 1
 
 
 def test_book_weekday_same_week(bot: EADKBot) -> None:
@@ -365,3 +377,27 @@ def test_book_already_booked(bot: EADKBot) -> None:
             desk_num=1,
             end_date_str=None,
         )
+
+
+def test_book_for_other(bot: EADKBot) -> None:
+    database = bot.database
+
+    response = bot.book(
+        command_info(author_role_ids=[]),
+        date_str=None,
+        user_id=7,
+        desk_num=None,
+        end_date_str=None,
+    )
+    assert response.ephemeral is True
+    assert database.state.day(TODAY)[0].desk(0).booker is None
+
+    response = bot.book(
+        command_info(author_role_ids=[ADMIN_ROLE_ID]),
+        date_str=None,
+        user_id=7,
+        desk_num=None,
+        end_date_str=None,
+    )
+    assert response.ephemeral is False
+    assert database.state.day(TODAY)[0].desk(0).booker == 7

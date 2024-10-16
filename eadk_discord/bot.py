@@ -71,6 +71,12 @@ class EADKBot:
         self._regular_role_ids = regular_role_ids
         self._admin_role_ids = admin_role_ids
 
+    def _is_author_regular(self, info: CommandInfo) -> bool:
+        return bool(info.author_role_ids.intersection(self._regular_role_ids.union(self._admin_role_ids)))
+
+    def _is_author_admin(self, info: CommandInfo) -> bool:
+        return bool(info.author_role_ids.intersection(self._admin_role_ids))
+
     @property
     def database(self) -> Database:
         return self._database
@@ -136,11 +142,14 @@ class EADKBot:
         if end_date is not None:
             days = self._database.state.day_range(booking_date, end_date)
             for day in days:
-                if day.desk(desk_index).owner is not info.author_id:
+                if day.desk(desk_index).owner is not info.author_id and not self._is_author_admin(info):
                     return Response(
                         message="Range bookings are only allowed for desks you own for the entire range.",
                         ephemeral=True,
                     )
+
+        if user_id != info.author_id and not self._is_author_regular(info):
+            return Response(message="You do not have permission to book desks for other users.", ephemeral=True)
 
         self._database.handle_event(
             Event(
@@ -186,7 +195,7 @@ class EADKBot:
                 return Response(message="A desk must be specified for range unbookings.", ephemeral=True)
             desk_index = desk_num - 1
             for booking_day in booking_days:
-                if booking_day.desk(desk_index).owner != info.author_id:
+                if booking_day.desk(desk_index).owner != info.author_id and not self._is_author_admin(info):
                     return Response(
                         message="Range unbookings are only allowed for desks you own for the entire range.",
                         ephemeral=True,
@@ -214,6 +223,9 @@ class EADKBot:
                 return Response(
                     message=f"{info.format_user(user_id)} already has no desks booked for {date_str}.", ephemeral=True
                 )
+
+        if user_id != info.author_id and not self._is_author_regular(info):
+            return Response(message="You do not have permission to unbook desks for other users.", ephemeral=True)
 
         if len(booking_days) > 1:
             self._database.handle_event(

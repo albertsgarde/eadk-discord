@@ -63,7 +63,7 @@ def test_unbook_with_user(bot: EADKBot) -> None:
     day.desk(1).booker = 4
 
     response = bot.unbook(
-        command_info(),
+        command_info(author_role_ids=[REGULAR_ROLE_ID]),
         date_str=None,
         user_id=5,
         desk_num=None,
@@ -84,7 +84,7 @@ def test_unbook_with_user_desk(bot: EADKBot) -> None:
     day.desk(1).booker = 4
 
     response = bot.unbook(
-        command_info(),
+        command_info(author_role_ids=[REGULAR_ROLE_ID]),
         date_str=None,
         user_id=5,
         desk_num=4,

@@ -28,7 +28,7 @@ def command_info(
     now: datetime = NOW,
     format_user: Callable[[int], str] = lambda user: str(user),
     author_id: int = 1,
-    author_role_ids: Sequence[int] = [REGULAR_ROLE_ID, ADMIN_ROLE_ID],
+    author_role_ids: Sequence[int] = [],
 ) -> CommandInfo:
     return CommandInfo(
         now=now,

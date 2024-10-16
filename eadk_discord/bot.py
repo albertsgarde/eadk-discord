@@ -20,14 +20,23 @@ class CommandInfo(BaseModel):
     now: datetime = Field()
     format_user: Callable[[int], str] = Field()
     author_id: int = Field()
+    author_role_ids: set[int] = Field()
 
     @beartype
     @staticmethod
     def from_interaction(interaction: discord.Interaction) -> "CommandInfo":
+        match interaction.user:
+            case discord.Member() as member:
+                role_ids = set(role.id for role in member.roles)
+            case discord.User():
+                role_ids = set()
+            case _:
+                raise ValueError("Invalid interaction user type")
         return CommandInfo(
             now=datetime.now(TIME_ZONE),
             format_user=lambda user: fmt.user(interaction, user),
             author_id=interaction.user.id,
+            author_role_ids=role_ids,
         )
 
 
@@ -53,10 +62,20 @@ class Response:
 
 class EADKBot:
     _database: Database
+    _regular_role_ids: set[int]
+    _admin_role_ids: set[int]
 
     @beartype
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, regular_role_ids: set[int], admin_role_ids: set[int]) -> None:
         self._database = database
+        self._regular_role_ids = regular_role_ids
+        self._admin_role_ids = admin_role_ids
+
+    def _is_author_regular(self, info: CommandInfo) -> bool:
+        return bool(info.author_role_ids.intersection(self._regular_role_ids.union(self._admin_role_ids)))
+
+    def _is_author_admin(self, info: CommandInfo) -> bool:
+        return bool(info.author_role_ids.intersection(self._admin_role_ids))
 
     @property
     def database(self) -> Database:
@@ -123,11 +142,14 @@ class EADKBot:
         if end_date is not None:
             days = self._database.state.day_range(booking_date, end_date)
             for day in days:
-                if day.desk(desk_index).owner is not info.author_id:
+                if day.desk(desk_index).owner is not info.author_id and not self._is_author_admin(info):
                     return Response(
                         message="Range bookings are only allowed for desks you own for the entire range.",
                         ephemeral=True,
                     )
+
+        if user_id != info.author_id and not self._is_author_regular(info):
+            return Response(message="You do not have permission to book desks for other users.", ephemeral=True)
 
         self._database.handle_event(
             Event(
@@ -173,7 +195,7 @@ class EADKBot:
                 return Response(message="A desk must be specified for range unbookings.", ephemeral=True)
             desk_index = desk_num - 1
             for booking_day in booking_days:
-                if booking_day.desk(desk_index).owner != info.author_id:
+                if booking_day.desk(desk_index).owner != info.author_id and not self._is_author_admin(info):
                     return Response(
                         message="Range unbookings are only allowed for desks you own for the entire range.",
                         ephemeral=True,
@@ -213,6 +235,8 @@ class EADKBot:
             return Response(message=(f"Desk {desk_num} has been unbooked from {date_str} to {fmt.date(end_date)}."))
         else:
             [booking_day] = booking_days
+            if booking_day.desk(desk_index).booker != info.author_id and not self._is_author_regular(info):
+                return Response(message="You do not have permission to unbook desks for other users.", ephemeral=True)
             desk_booker = booking_day.desk(desk_index).booker
             if desk_booker is not None:
                 self._database.handle_event(

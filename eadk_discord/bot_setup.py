@@ -31,8 +31,8 @@ async def date_autocomplete(interaction: Interaction, current: str) -> list[Choi
 class BotConfig(BaseModel):
     bot_token: str
     database_path: Path
-    guild_ids: Sequence[int | str]
-    channel_ids: Sequence[int | str]
+    guild_ids: Sequence[int]
+    channel_ids: Sequence[int]
     regular_role_ids: Sequence[int]
     admin_role_ids: Sequence[int]
 

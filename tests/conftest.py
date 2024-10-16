@@ -19,7 +19,7 @@ def bot() -> EADKBot:
     database = Database.initialize(TODAY)
     database.handle_event(Event(author=None, time=NOW, event=SetNumDesks(date=TODAY, num_desks=6)))
 
-    bot = EADKBot(database, [REGULAR_ROLE_ID], [ADMIN_ROLE_ID])
+    bot = EADKBot(database, set([REGULAR_ROLE_ID]), set([ADMIN_ROLE_ID]))
 
     return bot
 
@@ -34,5 +34,5 @@ def command_info(
         now=now,
         format_user=format_user,
         author_id=author_id,
-        author_role_ids=author_role_ids,
+        author_role_ids=set(author_role_ids),
     )

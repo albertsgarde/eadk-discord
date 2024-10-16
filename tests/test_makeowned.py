@@ -2,9 +2,9 @@ from datetime import timedelta
 from itertools import chain
 
 import pytest
-from conftest import NOW, TODAY
+from conftest import NOW, TODAY, command_info
 
-from eadk_discord.bot import CommandInfo, EADKBot
+from eadk_discord.bot import EADKBot
 from eadk_discord.database.event import Event, SetNumDesks
 from eadk_discord.database.event_errors import DeskAlreadyOwnedError, NonExistentDeskError
 
@@ -16,7 +16,7 @@ def test_makeowned(bot: EADKBot) -> None:
     distant_date = TODAY + timedelta(days=23)
 
     response = bot.makeowned(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         start_date_str=tomorrow.isoformat(),
         user_id=None,
         desk_num=3,
@@ -45,7 +45,7 @@ def test_makeowned_with_user(bot: EADKBot) -> None:
     distant_date = TODAY + timedelta(days=23)
 
     response = bot.makeowned(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         start_date_str=tomorrow.isoformat(),
         user_id=4,
         desk_num=3,
@@ -76,7 +76,7 @@ def test_makeowned_booked(bot: EADKBot) -> None:
     database.state.day(distant_date)[0].desk(2).booker = 4
 
     response = bot.makeowned(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         start_date_str=tomorrow.isoformat(),
         user_id=None,
         desk_num=3,
@@ -108,7 +108,7 @@ def test_makeowned_varying_desk_num(bot: EADKBot) -> None:
     database.handle_event(Event(author=None, time=NOW, event=SetNumDesks(date=date2, num_desks=6)))
 
     bot.makeowned(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         start_date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=5,
@@ -125,7 +125,7 @@ def test_makeowned_non_existent_desk(bot: EADKBot) -> None:
 
     with pytest.raises(NonExistentDeskError):
         bot.makeowned(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             start_date_str=tomorrow.isoformat(),
             user_id=None,
             desk_num=7,
@@ -133,7 +133,7 @@ def test_makeowned_non_existent_desk(bot: EADKBot) -> None:
 
     with pytest.raises(NonExistentDeskError):
         bot.makeowned(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             start_date_str=tomorrow.isoformat(),
             user_id=None,
             desk_num=0,
@@ -157,7 +157,7 @@ def test_makeowned_owned_desk(bot: EADKBot) -> None:
 
     with pytest.raises(DeskAlreadyOwnedError):
         bot.makeowned(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             start_date_str=tomorrow.isoformat(),
             user_id=None,
             desk_num=3,

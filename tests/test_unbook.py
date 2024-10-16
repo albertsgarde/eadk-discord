@@ -1,9 +1,9 @@
 from datetime import timedelta
 
 import pytest
-from conftest import NOW, TODAY
+from conftest import NOW, TODAY, command_info
 
-from eadk_discord.bot import CommandInfo, EADKBot
+from eadk_discord.bot import EADKBot
 from eadk_discord.bot_setup import INTERNAL_ERROR_MESSAGE
 from eadk_discord.database.event_errors import NonExistentDeskError
 from eadk_discord.database.state import DateTooEarlyError
@@ -15,7 +15,7 @@ def test_unbook(bot: EADKBot) -> None:
     database.state.day(TODAY)[0].desk(3).booker = 1
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=None,
         desk_num=None,
@@ -32,7 +32,7 @@ def test_unbook_with_desk(bot: EADKBot) -> None:
     state.day(TODAY)[0].desk(4).booker = 1
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=None,
         desk_num=5,
@@ -43,7 +43,7 @@ def test_unbook_with_desk(bot: EADKBot) -> None:
         assert state.day(TODAY)[0].desk(i).booker is None
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=None,
         desk_num=3,
@@ -63,7 +63,7 @@ def test_unbook_with_user(bot: EADKBot) -> None:
     day.desk(1).booker = 4
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=5,
         desk_num=None,
@@ -84,7 +84,7 @@ def test_unbook_with_user_desk(bot: EADKBot) -> None:
     day.desk(1).booker = 4
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=5,
         desk_num=4,
@@ -95,7 +95,7 @@ def test_unbook_with_user_desk(bot: EADKBot) -> None:
     assert day.desk(3).booker is None
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=None,
         user_id=5,
         desk_num=2,
@@ -118,7 +118,7 @@ def test_unbook_with_date(bot: EADKBot) -> None:
     day.desk(4).booker = 1
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=date.isoformat(),
         user_id=None,
         desk_num=None,
@@ -136,7 +136,7 @@ def test_unbook_range_no_desk(bot: EADKBot) -> None:
     date = TODAY + timedelta(3)
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=None,
@@ -151,7 +151,7 @@ def test_unbook_range(bot: EADKBot) -> None:
     date = TODAY + timedelta(3)
 
     response = bot.makeowned(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         start_date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=1,
@@ -160,7 +160,7 @@ def test_unbook_range(bot: EADKBot) -> None:
     assert not response.ephemeral
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=1,
@@ -180,7 +180,7 @@ def test_unbook_range_unowned(bot: EADKBot) -> None:
     date = TODAY + timedelta(3)
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=1,
@@ -191,7 +191,7 @@ def test_unbook_range_unowned(bot: EADKBot) -> None:
 
 def test_unbook_in_past(bot: EADKBot) -> None:
     response = bot.unbook(
-        CommandInfo(now=NOW + timedelta(2), format_user=lambda user: str(user), author_id=1),
+        command_info(now=NOW + timedelta(2), author_id=1),
         date_str=TODAY.isoformat(),
         user_id=None,
         desk_num=None,
@@ -204,7 +204,7 @@ def test_unbook_in_past(bot: EADKBot) -> None:
 def test_unbook_too_early(bot: EADKBot) -> None:
     with pytest.raises(DateTooEarlyError):
         bot.unbook(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             date_str=(TODAY - timedelta(1)).isoformat(),
             user_id=0,
             desk_num=1,
@@ -215,7 +215,7 @@ def test_unbook_too_early(bot: EADKBot) -> None:
 def test_unbook_non_existent_desk(bot: EADKBot) -> None:
     with pytest.raises(NonExistentDeskError):
         bot.unbook(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             date_str="today",
             user_id=0,
             desk_num=7,
@@ -223,7 +223,7 @@ def test_unbook_non_existent_desk(bot: EADKBot) -> None:
         )
     with pytest.raises(NonExistentDeskError):
         bot.unbook(
-            CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+            command_info(),
             date_str="today",
             user_id=0,
             desk_num=0,
@@ -233,7 +233,7 @@ def test_unbook_non_existent_desk(bot: EADKBot) -> None:
 
 def test_unbook_unbooked_desk(bot: EADKBot) -> None:
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="today",
         user_id=0,
         desk_num=None,
@@ -243,7 +243,7 @@ def test_unbook_unbooked_desk(bot: EADKBot) -> None:
     assert response.message != INTERNAL_ERROR_MESSAGE
 
     response = bot.unbook(
-        CommandInfo(now=NOW, format_user=lambda user: str(user), author_id=1),
+        command_info(),
         date_str="today",
         user_id=0,
         desk_num=1,

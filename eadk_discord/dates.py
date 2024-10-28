@@ -32,8 +32,8 @@ def parse_date_arg(argument: str, today: date) -> date:
     else:
         try:
             return date.fromisoformat(argument)
-        except Exception:
-            raise DateParseError(argument) from Exception
+        except Exception as e:
+            raise DateParseError(argument) from e
 
 
 @beartype

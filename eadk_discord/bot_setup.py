@@ -35,6 +35,12 @@ class BotConfig(BaseModel):
     channel_ids: Sequence[int]
     regular_role_ids: Sequence[int]
     admin_role_ids: Sequence[int]
+    logger: logging.Logger
+
+    def log_command(self, command_name: str, interaction: Interaction, args: dict[str, str]) -> None:
+        self.logger.info(
+            f"Command {command_name} invoked by {interaction.user} in {interaction.channel} with args {args}"
+        )
 
     def guilds(self) -> Sequence[Snowflake]:
         return [discord.Object(id=int(guild_id)) for guild_id in self.guild_ids]
@@ -69,6 +75,7 @@ class BotConfig(BaseModel):
             interaction: Interaction,
             date_arg: str | None,
         ) -> None:
+            self.log_command("info", interaction, {"date": str(date_arg)})
             await eadk_bot.info(
                 CommandInfo.from_interaction(interaction),
                 date_arg,
@@ -85,6 +92,16 @@ class BotConfig(BaseModel):
             desk_num_arg: Range[int, 1] | None,
             end_date_arg: str | None,
         ) -> None:
+            self.log_command(
+                "book",
+                interaction,
+                {
+                    "date": str(booking_date_arg),
+                    "user": str(user.id if user else None),
+                    "desk_id": str(desk_num_arg),
+                    "end_date": str(end_date_arg),
+                },
+            )
             await eadk_bot.book(
                 CommandInfo.from_interaction(interaction),
                 booking_date_arg,

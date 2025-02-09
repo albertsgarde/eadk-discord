@@ -8,7 +8,16 @@ from pathlib import Path
 from eadk_discord import bot_setup
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True, parents=True)
+    logging.getLogger().setLevel(logging.DEBUG)
+    stderr_logger = logging.StreamHandler()
+    stderr_logger.setLevel(logging.WARNING)
+    logging.getLogger().addHandler(stderr_logger)
+    file_logger = logging.FileHandler(log_dir / "info.log")
+    file_logger.setLevel(logging.INFO)
+    logging.getLogger().addHandler(file_logger)
+    logging.getLogger().addHandler(logging.FileHandler(log_dir / "debug.log"))
 
     parser = argparse.ArgumentParser(prog="EADK Discord Bot")
     parser.add_argument("config_path")

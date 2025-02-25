@@ -29,7 +29,7 @@ async def date_autocomplete(interaction: Interaction, current: str) -> list[Choi
 
 
 def log_command(logger: logging.Logger, command_name: str, interaction: Interaction, args: dict[str, str]) -> None:
-    logger.info(f"Command {command_name} invoked by {interaction.user} in {interaction.channel} with args {args}")
+    logger.info(f"Command '{command_name}' invoked by '{interaction.user}' in '{interaction.channel}' with args {args}")
 
 
 class BotConfig(BaseModel):

@@ -28,6 +28,10 @@ async def date_autocomplete(interaction: Interaction, current: str) -> list[Choi
     return [Choice(name=option, value=option) for option in options if option.startswith(current.lower())]
 
 
+def log_command(logger: logging.Logger, command_name: str, interaction: Interaction, args: dict[str, str]) -> None:
+    logger.info(f"Command '{command_name}' invoked by '{interaction.user}' in '{interaction.channel}' with args {args}")
+
+
 class BotConfig(BaseModel):
     bot_token: str
     database_path: Path
@@ -39,7 +43,7 @@ class BotConfig(BaseModel):
     def guilds(self) -> Sequence[Snowflake]:
         return [discord.Object(id=int(guild_id)) for guild_id in self.guild_ids]
 
-    def setup_bot(self) -> Bot:
+    def setup_bot(self, logger: logging.Logger) -> Bot:
         database_path = self.database_path
         guilds = self.guilds()
         if database_path.exists():
@@ -69,6 +73,7 @@ class BotConfig(BaseModel):
             interaction: Interaction,
             date_arg: str | None,
         ) -> None:
+            log_command(logger, "info", interaction, {"date": str(date_arg)})
             await eadk_bot.info(
                 CommandInfo.from_interaction(interaction),
                 date_arg,
@@ -85,6 +90,17 @@ class BotConfig(BaseModel):
             desk_num_arg: Range[int, 1] | None,
             end_date_arg: str | None,
         ) -> None:
+            log_command(
+                logger,
+                "book",
+                interaction,
+                {
+                    "date": str(booking_date_arg),
+                    "user": str(user.id if user else None),
+                    "desk_id": str(desk_num_arg),
+                    "end_date": str(end_date_arg),
+                },
+            )
             await eadk_bot.book(
                 CommandInfo.from_interaction(interaction),
                 booking_date_arg,
@@ -174,7 +190,7 @@ class BotConfig(BaseModel):
 
         return bot
 
-    def run_bot(self) -> Bot:
-        bot = self.setup_bot()
+    def run_bot(self, logger: logging.Logger) -> Bot:
+        bot = self.setup_bot(logger)
         bot.run(self.bot_token)
         return bot

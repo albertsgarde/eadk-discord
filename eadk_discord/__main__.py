@@ -8,7 +8,20 @@ from pathlib import Path
 from eadk_discord import bot_setup
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True, parents=True)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    stderr_logger = logging.StreamHandler()
+    stderr_logger.setLevel(logging.WARNING)
+    stderr_logger.setFormatter(formatter)
+    logger.addHandler(stderr_logger)
+    file_logger = logging.FileHandler(log_dir / "info.log")
+    file_logger.setLevel(logging.INFO)
+    file_logger.setFormatter(formatter)
+    logger.addHandler(file_logger)
+    logger.addHandler(logging.FileHandler(log_dir / "debug.log"))
 
     parser = argparse.ArgumentParser(prog="EADK Discord Bot")
     parser.add_argument("config_path")
@@ -29,4 +42,4 @@ if __name__ == "__main__":
     with open(config_path, "rb") as config_file:
         config = bot_setup.BotConfig.model_validate(tomllib.load(config_file))
 
-    config.run_bot()
+    config.run_bot(logger)

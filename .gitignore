@@ -166,3 +166,5 @@ db*.json
 
 .vscode/
 .ruff_cache/
+
+logs/

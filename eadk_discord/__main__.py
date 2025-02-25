@@ -10,14 +10,18 @@ from eadk_discord import bot_setup
 if __name__ == "__main__":
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True, parents=True)
-    logging.getLogger().setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
     stderr_logger = logging.StreamHandler()
     stderr_logger.setLevel(logging.WARNING)
-    logging.getLogger().addHandler(stderr_logger)
+    stderr_logger.setFormatter(formatter)
+    logger.addHandler(stderr_logger)
     file_logger = logging.FileHandler(log_dir / "info.log")
     file_logger.setLevel(logging.INFO)
-    logging.getLogger().addHandler(file_logger)
-    logging.getLogger().addHandler(logging.FileHandler(log_dir / "debug.log"))
+    file_logger.setFormatter(formatter)
+    logger.addHandler(file_logger)
+    logger.addHandler(logging.FileHandler(log_dir / "debug.log"))
 
     parser = argparse.ArgumentParser(prog="EADK Discord Bot")
     parser.add_argument("config_path")
@@ -38,4 +42,4 @@ if __name__ == "__main__":
     with open(config_path, "rb") as config_file:
         config = bot_setup.BotConfig.model_validate(tomllib.load(config_file))
 
-    config.run_bot()
+    config.run_bot(logger)

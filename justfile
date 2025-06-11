@@ -1,8 +1,8 @@
-.PHONY: test launch t
-
 test:
 	uv run pytest
-t: test
+
+t: 
+    just test
 
 cov:
 	uv run pytest --cov --cov-report=term-missing

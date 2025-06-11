@@ -1,7 +1,7 @@
 test:
 	uv run pytest
 
-t: 
+t:
     just test
 
 cov:

@@ -13,7 +13,7 @@ from eadk_discord.database import Database
 from eadk_discord.database.event import BookDesk, Event, MakeFlex, MakeOwned, UnbookDesk
 from eadk_discord.database.event_errors import EventError
 
-TIME_ZONE = ZoneInfo("Europe/Copenhagen")
+TIME_ZONE = ZoneInfo("Europe/Berlin")
 
 
 class CommandInfo(BaseModel):

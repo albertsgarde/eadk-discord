@@ -5,17 +5,19 @@ requires = ["setuptools", "setuptools-scm"]
 [project]
 authors = [{name = "albertsgarde", email = "albertsgarde@gmail.com"}]
 dependencies = [
+  "audioop-lts>=0.2.1",
   "beartype>=0.19.0",
   "discord-py>=2.4.0",
   "pydantic-settings>=2.5.2",
-  "pydantic>=2.9.2"
+  "pydantic>=2.9.2",
+  "tzdata>=2025.2",
 ]
 description = "A Discord bot the EADK discord server"
 dynamic = ["optional-dependencies"]
 license = {file = "LICENSE"}
 name = "eadk_discord"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 version = "0.0.1"
 
 [tool.coverage.report]
